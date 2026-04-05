@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND = "https://costsavvy-backend.onrender.com";
-const ADMIN_KEY = process.env.COSTSAVVY_ADMIN_KEY || "";
+const ADMIN_KEY = process.env.APP_API_KEY || "";
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!ADMIN_KEY) return NextResponse.json({ error: "Admin key not configured" }, { status: 503 });

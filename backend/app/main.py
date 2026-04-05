@@ -38,7 +38,7 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-APP_API_KEY  = (os.getenv("COSTSAVVY_ADMIN_KEY") or os.getenv("APP_API_KEY") or "").strip()   # admin portal auth
+APP_API_KEY  = os.getenv("APP_API_KEY", "").strip()   # admin portal auth
 CHAT_API_KEY = os.getenv("CHAT_API_KEY", "").strip()  # chat endpoint auth (empty = open)
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
 MIN_DB_RESULTS_BEFORE_WEB = int(os.getenv("MIN_DB_RESULTS_BEFORE_WEB", "3"))
