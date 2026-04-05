@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Savvy - Healthcare Price Transparency</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6b2458;
+            --primary-dark: #5a1e4a;
+            --primary-light: #8a3d73;
+            --primary-bg: #fdf2f8;
+            --primary-border: #f5d0e6;
+            --accent: #d4a574;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f6f7; min-height: 100vh; }
+
+        /* ── Navbar ─────────────────────────────────────────── */
+        .navbar { background: var(--primary); color: white; padding: 12px 24px; position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 8px rgba(107,36,88,0.3); }
+        .navbar-inner { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: white; }
+        .nav-logo-icon { width: 32px; height: 32px; flex-shrink: 0; }
+        .nav-logo-text { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-links { display: flex; align-items: center; gap: 4px; }
+        .nav-item { position: relative; }
+        .nav-link { color: rgba(255,255,255,0.9); text-decoration: none; font-size: 15px; font-weight: 500; padding: 8px 14px; border-radius: 6px; transition: background 0.2s; display: flex; align-items: center; gap: 4px; cursor: pointer; background: none; border: none; font-family: inherit; }
+        .nav-link:hover { background: rgba(255,255,255,0.12); color: white; }
+        .nav-link svg { width: 12px; height: 12px; }
+        .nav-dropdown { position: absolute; top: calc(100% + 6px); left: 0; background: white; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 200px; padding: 6px; display: none; z-index: 300; }
+        .nav-item:hover .nav-dropdown { display: block; }
+        .nav-dropdown a { display: block; padding: 10px 14px; color: var(--primary); text-decoration: none; font-size: 14px; border-radius: 6px; transition: background 0.15s; }
+        .nav-dropdown a:hover { background: var(--primary-bg); }
+        .nav-dropdown .dd-title { font-weight: 600; font-size: 13px; }
+        .nav-dropdown .dd-desc { font-size: 12px; color: #888; margin-top: 1px; }
+        .nav-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-signin { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; background: none; border: none; cursor: pointer; font-family: inherit; padding: 8px 12px; border-radius: 6px; transition: background 0.2s; text-decoration: none; }
+        .btn-signin:hover { background: rgba(255,255,255,0.12); color: white; }
+        .btn-platform { background: rgba(255,255,255,0.15); color: white; font-size: 14px; font-weight: 500; padding: 8px 18px; border-radius: 20px; border: none; cursor: pointer; font-family: inherit; transition: background 0.2s; text-decoration: none; }
+        .btn-platform:hover { background: rgba(255,255,255,0.25); }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 6px; background: none; border: none; }
+        .hamburger span { display: block; width: 22px; height: 2px; background: white; border-radius: 2px; transition: all 0.3s; }
+        .mobile-menu { display: none; background: var(--primary-dark); padding: 16px 24px; flex-direction: column; gap: 4px; }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a, .mobile-menu button { color: rgba(255,255,255,0.9); text-decoration: none; font-size: 15px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; text-align: left; cursor: pointer; }
+        .mobile-menu a:last-child, .mobile-menu button:last-child { border-bottom: none; }
+        @media (max-width: 900px) {
+            .nav-links, .nav-actions { display: none; }
+            .hamburger { display: flex; }
+        }
+
+        /* ── Hero ────────────────────────────────────────────── */
+        .hero { background: white; padding: 60px 24px 48px; }
+        .hero-inner { max-width: 900px; margin: 0 auto; }
+        .hero h1 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(32px, 5vw, 58px); font-weight: 700; color: #403B3D; line-height: 1.15; margin-bottom: 8px; }
+        .hero-rotating { color: var(--primary); display: inline-block; min-width: 280px; transition: opacity 0.35s; }
+        .hero-rotating.fade { opacity: 0; }
+        .hero-sub { font-size: 17px; color: #666; margin-top: 12px; margin-bottom: 32px; max-width: 600px; }
+        .hero-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+        .hero-chip { display: flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 24px; background: var(--primary); color: white; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background 0.2s; font-family: inherit; }
+        .hero-chip:hover { background: var(--primary-light); }
+        .hero-chip svg { width: 14px; height: 14px; }
+
+        /* ── Main container ──────────────────────────────────── */
+        .main-container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        /* ── Search Section ──────────────────────────────────── */
+        .search-section { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .search-section h2 { font-size: 17px; color: #333; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .search-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(107,36,88,0.1); }
+        .search-btn { background: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; height: 42px; display: flex; align-items: center; gap: 8px; transition: background 0.2s; font-family: inherit; white-space: nowrap; }
+        .search-btn:hover { background: var(--primary-dark); }
+        .search-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .cpt-or { display: flex; align-items: center; margin: 8px 0 6px; color: #aaa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cpt-or::before, .cpt-or::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+        .cpt-or span { padding: 0 10px; }
+        .search-divider { display: flex; align-items: center; margin: 20px 0 0; color: #888; font-size: 13px; }
+        .search-divider::before, .search-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+        .search-divider span { padding: 0 16px; }
+
+        /* ── Error ───────────────────────────────────────────── */
+        .error-message { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .error-message.active { display: block; }
+
+        /* ── Results ─────────────────────────────────────────── */
+        .results-section { display: none; margin-bottom: 20px; }
+        .results-section.active { display: block; }
+        .results-header-bar { background: white; padding: 16px 20px; border-radius: 12px 12px 0 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .results-title { font-size: 18px; font-weight: 600; color: #333; }
+        .results-meta { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #666; }
+        .price-min { font-weight: 600; color: #059669; }
+        .price-max { font-weight: 600; color: #dc2626; }
+        .results-container { display: grid; grid-template-columns: 1fr 1.2fr; background: white; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        @media (max-width: 1000px) { .results-container { grid-template-columns: 1fr; } .map-section { order: -1; } }
+        .facility-list-section { border-right: 1px solid #eee; }
+        .facility-list-header { padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .facility-list-header h3 { font-size: 14px; font-weight: 600; color: #555; }
+        .sort-select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; background: white; }
+        .facility-list { max-height: 420px; overflow-y: auto; }
+        .facility-card { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: all 0.2s; }
+        .facility-card:hover { background: #f9fafb; }
+        .facility-card.selected { background: var(--primary-bg); border-left: 3px solid var(--primary); }
+        .facility-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .facility-info { display: flex; gap: 10px; flex: 1; }
+        .facility-index { background: var(--primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; flex-shrink: 0; }
+        .facility-details { flex: 1; }
+        .facility-name { font-weight: 600; color: var(--primary); font-size: 14px; margin-bottom: 2px; }
+        .facility-type { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .facility-location { font-size: 12px; color: #666; }
+        .facility-website { font-size: 12px; margin-top: 6px; }
+        .facility-website a { color: #2563eb; text-decoration: none; font-weight: 500; }
+        .facility-website a:hover { text-decoration: underline; }
+        .facility-pricing { text-align: right; }
+        .facility-price { font-weight: 700; font-size: 18px; color: #333; }
+        .facility-price.low { color: #059669; }
+        .facility-price.estimate { color: #888; font-size: 14px; }
+        .price-note { font-size: 11px; color: #888; }
+        .facility-web-price { font-size: 12px; color: #2563eb; font-weight: 600; margin-top: 4px; }
+        .web-search-section { border-top: 1px solid #eee; padding: 12px 16px 16px; background: #fafbff; }
+        .web-search-section h3 { font-size: 13px; font-weight: 600; color: #444; margin-bottom: 6px; }
+        .web-search-hint { font-size: 11px; color: #666; margin-bottom: 10px; line-height: 1.4; }
+        .web-search-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+        .web-search-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: white; border-radius: 8px; border: 1px solid #e8ecf4; }
+        .web-search-idx { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .web-search-body { flex: 1; min-width: 0; }
+        .web-search-name { font-size: 13px; font-weight: 600; color: #333; }
+        .web-search-meta { font-size: 11px; color: #666; margin-top: 2px; }
+        .web-search-price { font-size: 15px; font-weight: 700; color: #1d4ed8; flex-shrink: 0; }
+
+        /* ── Map ─────────────────────────────────────────────── */
+        .map-section { position: relative; }
+        .map-container { height: 420px; }
+        #map { width: 100%; height: 100%; }
+        .map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .map-controls input[type="checkbox"] { accent-color: var(--primary); }
+        .map-legend { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: white; padding: 8px 10px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 11px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .legend-item:last-child { margin-bottom: 0; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-dot.user { background: #2563eb; }
+        .legend-dot.facility { background: var(--primary); }
+        .open-maps-btn { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: var(--primary); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        .open-maps-btn:hover { background: var(--primary-dark); color: white; }
+        .user-marker { background: #2563eb; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .facility-marker { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+        .price-label { background: white; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-weight: 600; font-size: 11px; color: var(--primary); white-space: nowrap; border: 1px solid #e5e7eb; }
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .leaflet-popup-content { margin: 10px 12px; min-width: 180px; }
+        .popup-title { color: var(--primary); font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .popup-address { color: #666; font-size: 11px; margin-bottom: 6px; }
+        .popup-details { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid #eee; }
+        .popup-distance { font-size: 11px; color: #888; }
+
+        /* ── Chat ────────────────────────────────────────────── */
+        .chat-section { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .chat-header { background: var(--primary); color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h2 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .chat-status { font-size: 12px; opacity: 0.9; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; }
+        .chat-messages { height: 320px; overflow-y: auto; padding: 16px; background: #fafafa; }
+        .message { margin-bottom: 16px; display: flex; gap: 10px; }
+        .message.user { flex-direction: row-reverse; }
+        .message-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .message.assistant .message-avatar { background: var(--primary); color: white; }
+        .message.user .message-avatar { background: #e5e7eb; color: #666; }
+        .message-content { max-width: 75%; }
+        .message-bubble { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.55; }
+        .message.assistant .message-bubble { background: white; color: #333; border: 1px solid #eee; border-radius: 12px 12px 12px 4px; }
+        .message.user .message-bubble { background: var(--primary); color: white; border-radius: 12px 12px 4px 12px; }
+        .message-time { font-size: 11px; color: #999; margin-top: 4px; }
+        .message.user .message-time { text-align: right; }
+        .typing-indicator { display: none; padding: 10px 14px; background: white; border: 1px solid #eee; border-radius: 12px; width: fit-content; }
+        .typing-indicator.active { display: block; }
+        .typing-dots { display: flex; gap: 4px; }
+        .typing-dots span { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; animation: typing 1.4s infinite; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+        .chat-input-container { padding: 16px; background: white; border-top: 1px solid #eee; }
+        .chat-input-wrapper { display: flex; gap: 10px; }
+        .chat-input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; }
+        .chat-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(107,36,88,0.1); }
+        .send-btn { background: var(--primary); color: white; border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .send-btn:hover { background: var(--primary-dark); }
+        .send-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .send-btn svg { width: 20px; height: 20px; }
+        .quick-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .quick-action { padding: 8px 14px; background: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-border); border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .quick-action:hover { background: var(--primary); color: white; }
+        .message-bubble strong { font-weight: 600; }
+        .message-bubble ul, .message-bubble ol { margin: 8px 0; padding-left: 20px; }
+        .message-bubble li { margin-bottom: 4px; }
+        .message-bubble a { color: var(--primary); text-decoration: underline; }
+        .message.user .message-bubble a { color: #f5d0e6; }
+        .search-btn .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Footer ──────────────────────────────────────────── */
+        .footer { background: white; padding: 56px 24px 32px; margin-top: 48px; }
+        .footer-inner { max-width: 1400px; margin: 0 auto; }
+        .footer-top { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+        .footer-logo { font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .footer-socials { display: flex; gap: 10px; }
+        .footer-social { background: #f3e8ef; color: #555; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s; }
+        .footer-social:hover { background: var(--primary-border); }
+        .footer-social svg { width: 18px; height: 18px; }
+        .footer-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 32px; margin-bottom: 40px; }
+        .footer-col h3 { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }
+        .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+        .footer-col a { color: #666; text-decoration: none; font-size: 16px; transition: color 0.2s; }
+        .footer-col a:hover { color: var(--primary-light); }
+        .footer-bottom { display: flex; flex-direction: column; gap: 16px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
+        @media (min-width: 640px) { .footer-bottom { flex-direction: row; justify-content: space-between; align-items: center; } }
+        .footer-copy { font-size: 13px; color: #666; }
+        .footer-links { display: flex; flex-wrap: wrap; gap: 20px; }
+        .footer-links a { font-size: 13px; color: #666; text-decoration: none; }
+        .footer-links a:hover { color: var(--primary-light); }
+    </style>
+</head>
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="/" class="nav-logo">
+                <svg class="nav-logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="8" fill="white"/>
+                    <g stroke="white" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="50" y1="15" x2="50" y2="30"/><line x1="50" y1="70" x2="50" y2="85"/>
+                        <line x1="15" y1="50" x2="30" y2="50"/><line x1="70" y1="50" x2="85" y2="50"/>
+                        <line x1="25.3" y1="25.3" x2="35.6" y2="35.6"/><line x1="64.4" y1="64.4" x2="74.7" y2="74.7"/>
+                        <line x1="74.7" y1="25.3" x2="64.4" y2="35.6"/><line x1="35.6" y1="64.4" x2="25.3" y2="74.7"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(22.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(67.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(112.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(157.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(202.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(247.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(292.5 50 50)"/>
+                        <line x1="50" y1="20" x2="50" y2="28" transform="rotate(337.5 50 50)"/>
+                    </g>
+                </svg>
+                <span class="nav-logo-text">Cost Savvy</span>
+            </a>
+
+            <div class="nav-links">
+                <div class="nav-item">
+                    <a href="#search" class="nav-link">Search Care</a>
+                </div>
+                <div class="nav-item">
+                    <a href="https://www.costsavvy.health/providers-glossary" class="nav-link">Providers</a>
+                </div>
+                <div class="nav-item">
+                    <button class="nav-link">Resources <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+                    <div class="nav-dropdown">
+                        <a href="https://www.costsavvy.health/about"><span class="dd-title">About Us</span><span class="dd-desc">Our mission &amp; team</span></a>
+                        <a href="https://www.costsavvy.health/blog"><span class="dd-title">Blog</span><span class="dd-desc">Healthcare news &amp; insights</span></a>
+                        <a href="https://www.costsavvy.health/contact-us"><span class="dd-title">Contact Us</span></a>
+                    </div>
+                </div>
+                <div class="nav-item">
+                    <button class="nav-link">Shop for Plans <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+                    <div class="nav-dropdown">
+                        <a href="https://www.costsavvy.health/medicare"><span class="dd-title">Medicare</span></a>
+                        <a href="https://www.costsavvy.health/indiviual"><span class="dd-title">Individual &amp; Family Health</span></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <a href="https://www.costsavvy.health/auth?type=consumer" class="btn-signin">Sign Up</a>
+                <a href="/admin-login" class="btn-platform">Platform Sign In</a>
+            </div>
+
+            <button class="hamburger" id="hamburger" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#search" onclick="document.getElementById('mobileMenu').classList.remove('open')">Search Care</a>
+            <a href="https://www.costsavvy.health/providers-glossary">Providers</a>
+            <a href="https://www.costsavvy.health/about">About Us</a>
+            <a href="https://www.costsavvy.health/blog">Blog</a>
+            <a href="https://www.costsavvy.health/medicare">Medicare</a>
+            <a href="https://www.costsavvy.health/indiviual">Individual &amp; Family Health</a>
+            <a href="https://www.costsavvy.health/contact-us">Contact Us</a>
+            <a href="/admin-login">Platform Sign In</a>
+        </div>
+    </nav>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+        <div class="hero-inner">
+            <h1>
+                Know your healthcare costs<br>
+                <span style="font-size:0.85em; font-weight:400; color:#666;">for</span>
+                <span class="hero-rotating" id="heroWord">MRI Scans</span>
+            </h1>
+            <p class="hero-sub">
+                Real prices from hospital transparency files, CMS data &amp; AI-powered web search —
+                so you can compare before you go.
+            </p>
+            <div class="hero-chips">
+                <button class="hero-chip" data-service="mri">
+                    MRI <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="ct scan">
+                    CT Scan <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="xray">
+                    X-Ray <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="colonoscopy">
+                    Colonoscopy <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="blood test">
+                    Blood Test <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="ultrasound">
+                    Ultrasound <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button class="hero-chip" data-service="mammogram">
+                    Mammogram <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div class="main-container">
+
+        <!-- Quick Search -->
+        <section class="search-section" id="search">
+            <h2>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                Quick Price Search
+            </h2>
+            <form class="search-form" id="quickSearchForm" novalidate>
+                <div class="form-group">
+                    <label for="service">Service</label>
+                    <select id="service">
+                        <option value="">Select a service...</option>
+                        <optgroup label="Imaging">
+                            <option value="xray">X-Ray</option>
+                            <option value="mri">MRI</option>
+                            <option value="ct scan">CT Scan</option>
+                            <option value="ultrasound">Ultrasound</option>
+                            <option value="mammogram">Mammogram</option>
+                        </optgroup>
+                        <optgroup label="Procedures">
+                            <option value="colonoscopy">Colonoscopy</option>
+                            <option value="endoscopy">Endoscopy</option>
+                        </optgroup>
+                        <optgroup label="Lab Tests">
+                            <option value="blood test">Blood Test</option>
+                            <option value="urinalysis">Urinalysis</option>
+                        </optgroup>
+                        <optgroup label="Visits">
+                            <option value="office visit">Office Visit</option>
+                            <option value="emergency room">Emergency Room</option>
+                        </optgroup>
+                    </select>
+                    <div class="cpt-or"><span>or CPT code</span></div>
+                    <input type="text" id="cptCode" placeholder="e.g. 71046" maxlength="5" inputmode="numeric" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="zipcode">ZIP Code</label>
+                    <input type="text" id="zipcode" placeholder="e.g., 10001" maxlength="5" inputmode="numeric" autocomplete="postal-code" required>
+                </div>
+                <div class="form-group">
+                    <label for="payment">Payment Type</label>
+                    <select id="payment">
+                        <option value="cash">Cash / Self-Pay</option>
+                        <option value="insurance">Insurance</option>
+                    </select>
+                </div>
+                <div class="form-group" id="insuranceGroup" style="display:none;">
+                    <label for="insuranceProvider">Insurance Provider</label>
+                    <select id="insuranceProvider">
+                        <option value="">All providers</option>
+                        <optgroup label="Commercial">
+                            <option value="UnitedHealthcare">UnitedHealthcare</option>
+                            <option value="Blue Cross Blue Shield">Blue Cross Blue Shield</option>
+                            <option value="Aetna">Aetna</option>
+                            <option value="Cigna">Cigna</option>
+                            <option value="Humana">Humana</option>
+                            <option value="Kaiser Permanente">Kaiser Permanente</option>
+                            <option value="Anthem">Anthem</option>
+                            <option value="Centene">Centene / WellCare</option>
+                            <option value="Molina Healthcare">Molina Healthcare</option>
+                            <option value="Oscar Health">Oscar Health</option>
+                            <option value="Ambetter">Ambetter</option>
+                        </optgroup>
+                        <optgroup label="Government">
+                            <option value="Medicare">Medicare</option>
+                            <option value="Medicaid">Medicaid</option>
+                            <option value="Tricare">Tricare (Military)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <button type="submit" class="search-btn" id="quickSearchBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    Search Prices
+                </button>
+            </form>
+            <div class="search-divider"><span>or ask our AI assistant below</span></div>
+        </section>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- Results -->
+        <section class="results-section" id="resultsSection">
+            <div class="results-header-bar">
+                <div class="results-title" id="resultsTitle">Results</div>
+                <div class="results-meta">
+                    <div id="priceRangeBlock">
+                        <span style="color:#888">Price range:</span>
+                        <span class="price-min" id="priceMin"></span>
+                        <span id="priceRangeSep">–</span>
+                        <span class="price-max" id="priceMax"></span>
+                        <span id="priceEstimateNote" style="display:none;color:#888;font-style:italic;">estimates only — contact facilities for exact pricing</span>
+                    </div>
+                    <span id="resultsCount">0 facilities</span>
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="facility-list-section">
+                    <div class="facility-list-header">
+                        <h3>Nearby Facilities</h3>
+                        <select class="sort-select" id="sortSelect">
+                            <option value="price">Lowest price</option>
+                            <option value="distance">Nearest</option>
+                        </select>
+                    </div>
+                    <div class="facility-list" id="facilityList"></div>
+                    <div class="web-search-section" id="webSearchSection" style="display:none;">
+                        <h3>Web search (per hospital)</h3>
+                        <p class="web-search-hint">Individual prices extracted from web results for each facility.</p>
+                        <div class="web-search-list" id="webSearchList"></div>
+                    </div>
+                </div>
+                <div class="map-section">
+                    <div class="map-container">
+                        <div id="map"></div>
+                        <div class="map-controls">
+                            <input type="checkbox" id="searchWhenMoving" checked>
+                            <label for="searchWhenMoving">Search when moving</label>
+                        </div>
+                        <div class="map-legend">
+                            <div class="legend-item"><div class="legend-dot user"></div><span>Your location</span></div>
+                            <div class="legend-item"><div class="legend-dot facility"></div><span>Facilities</span></div>
+                        </div>
+                        <a href="#" id="openMapsBtn" class="open-maps-btn" target="_blank" style="display:none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Chat -->
+        <section class="chat-section">
+            <div class="chat-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    AI Healthcare Price Assistant
+                </h2>
+                <div class="chat-status"><div class="status-dot"></div>Online</div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-avatar">💬</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Hi! I'm your healthcare price assistant. <strong>Use the Quick Search above</strong> for common services, or ask me anything like:
+                            <ul>
+                                <li>"How much does an MRI cost near 10001?"</li>
+                                <li>"Find X-ray prices near 06119 with Aetna insurance"</li>
+                                <li>"Compare colonoscopy prices in Chicago"</li>
+                            </ul>
+                        </div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+            </div>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask about healthcare prices..." autocomplete="off">
+                    <button class="send-btn" id="sendBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
+                <div class="quick-actions">
+                    <button class="quick-action" data-message="How much does an X-ray cost?">X-Ray prices</button>
+                    <button class="quick-action" data-message="How much does an MRI cost?">MRI prices</button>
+                    <button class="quick-action" data-message="How much does a CT scan cost?">CT Scan prices</button>
+                    <button class="quick-action" data-message="How much does a colonoscopy cost?">Colonoscopy</button>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- /main-container -->
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-top">
+                <div class="footer-logo">
+                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="8" fill="var(--primary)"/>
+                        <g stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round">
+                            <line x1="50" y1="15" x2="50" y2="30"/><line x1="50" y1="70" x2="50" y2="85"/>
+                            <line x1="15" y1="50" x2="30" y2="50"/><line x1="70" y1="50" x2="85" y2="50"/>
+                            <line x1="25.3" y1="25.3" x2="35.6" y2="35.6"/><line x1="64.4" y1="64.4" x2="74.7" y2="74.7"/>
+                            <line x1="74.7" y1="25.3" x2="64.4" y2="35.6"/><line x1="35.6" y1="64.4" x2="25.3" y2="74.7"/>
+                        </g>
+                    </svg>
+                    Cost Savvy Health
+                </div>
+                <div class="footer-socials">
+                    <a href="#" class="footer-social" aria-label="LinkedIn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                    <a href="#" class="footer-social" aria-label="Twitter">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-cols">
+                <div class="footer-col">
+                    <h3>Care</h3>
+                    <ul>
+                        <li><a href="#search">Search Care</a></li>
+                        <li><a href="https://www.costsavvy.health/providers-glossary">Providers</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Providers</h3>
+                    <ul>
+                        <li><a href="https://www.costsavvy.health/providers-glossary">Procedures</a></li>
+                        <li><a href="https://www.costsavvy.health/providers-glossary">Health Systems</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="https://www.costsavvy.health/about">About Us</a></li>
+                        <li><a href="https://www.costsavvy.health/blog">Blog</a></li>
+                        <li><a href="https://www.costsavvy.health/contact-us">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Plans</h3>
+                    <ul>
+                        <li><a href="https://www.costsavvy.health/medicare">Medicare</a></li>
+                        <li><a href="https://www.costsavvy.health/indiviual">Individual &amp; Family</a></li>
+                        <li><a href="/admin-login">Platform Sign In</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p class="footer-copy">© 2025 Cost Savvy Health. All Rights Reserved. CPT® © 2024 American Medical Association.</p>
+                <div class="footer-links">
+                    <a href="https://www.costsavvy.health/contact-us">Contact Us</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Use</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/leaflet.js"></script>
+    <script>
+        const API_BASE_URL = window.location.origin;
+        let sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        let map = null, markers = [], priceLabels = [], currentMapData = null, currentFacilities = [], currentWebFacilityPrices = [], isProcessing = false;
+
+        const $ = id => document.getElementById(id);
+        const quickSearchForm = $('quickSearchForm'), quickSearchBtn = $('quickSearchBtn'), chatMessages = $('chatMessages');
+        const chatInput = $('chatInput'), sendBtn = $('sendBtn'), typingIndicator = $('typingIndicator');
+        const resultsSection = $('resultsSection'), facilityList = $('facilityList'), resultsTitle = $('resultsTitle');
+        const resultsCount = $('resultsCount'), priceMin = $('priceMin'), priceMax = $('priceMax');
+        const openMapsBtn = $('openMapsBtn'), sortSelect = $('sortSelect'), errorMessage = $('errorMessage');
+        const webSearchSection = $('webSearchSection'), webSearchList = $('webSearchList');
+
+        // ── Rotating hero words ──
+        const heroWords = ['MRI Scans', 'Doctor Visits', 'Lab Tests', 'CT Scans', 'Surgeries', 'Colonoscopies', 'Ultrasounds', 'X-Rays'];
+        let heroIdx = 0;
+        const heroEl = $('heroWord');
+        setInterval(() => {
+            heroEl.classList.add('fade');
+            setTimeout(() => {
+                heroIdx = (heroIdx + 1) % heroWords.length;
+                heroEl.textContent = heroWords[heroIdx];
+                heroEl.classList.remove('fade');
+            }, 350);
+        }, 2200);
+
+        // ── Hero chips ──
+        document.querySelectorAll('.hero-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const svc = btn.dataset.service;
+                $('service').value = svc;
+                document.querySelector('#search').scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // ── Mobile menu ──
+        $('hamburger').addEventListener('click', () => {
+            $('mobileMenu').classList.toggle('open');
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            quickSearchForm.addEventListener('submit', handleQuickSearch);
+            chatInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !isProcessing) sendMessage(); });
+            sendBtn.addEventListener('click', () => { if (!isProcessing) sendMessage(); });
+            document.querySelectorAll('.quick-action').forEach(btn => btn.addEventListener('click', () => { chatInput.value = btn.dataset.message; sendMessage(); }));
+            sortSelect.addEventListener('change', sortAndRenderFacilities);
+            $('payment').addEventListener('change', function() {
+                $('insuranceGroup').style.display = this.value === 'insurance' ? 'flex' : 'none';
+            });
+        });
+
+        function escapeHtml(str) {
+            if (str == null || str === '') return '';
+            const d = document.createElement('div');
+            d.textContent = String(str);
+            return d.innerHTML;
+        }
+
+        function renderWebSearchList(items) {
+            if (!webSearchSection || !webSearchList) return;
+            if (!items || items.length === 0) { webSearchSection.style.display = 'none'; webSearchList.innerHTML = ''; return; }
+            webSearchSection.style.display = 'block';
+            webSearchList.innerHTML = items.map((w, i) => {
+                const dist = w.distance_miles != null && !Number.isNaN(Number(w.distance_miles)) ? `${Number(w.distance_miles).toFixed(1)} mi · ` : '';
+                const addr = escapeHtml(w.address || '');
+                const name = escapeHtml(w.hospital_name || 'Healthcare facility');
+                const px = Number(w.web_price);
+                const priceStr = Number.isFinite(px) ? `$${px.toLocaleString()}` : '—';
+                return `<div class="web-search-row"><span class="web-search-idx">${i+1}</span><div class="web-search-body"><div class="web-search-name">${name}</div><div class="web-search-meta">${dist}${addr}</div></div><div class="web-search-price">${priceStr}</div></div>`;
+            }).join('');
+        }
+
+        async function handleQuickSearch(e) {
+            e.preventDefault();
+            const service = $('service').value, zipcode = $('zipcode').value.trim(), payment = $('payment').value;
+            const cptCode = $('cptCode').value.trim(), insuranceProvider = $('insuranceProvider').value;
+            if (!service && !cptCode) { showError('Please select a service or enter a CPT code'); return; }
+            if (!zipcode) { showError('Please enter your ZIP code'); return; }
+            if (!/^\d{5}$/.test(zipcode)) { showError('ZIP code must be exactly 5 digits.'); $('zipcode').focus(); return; }
+            if (cptCode && !/^\d{5}$/.test(cptCode)) { showError('CPT code must be exactly 5 digits.'); $('cptCode').focus(); return; }
+
+            quickSearchBtn.disabled = true;
+            quickSearchBtn.innerHTML = '<span class="spinner"></span> Searching...';
+            hideError();
+            sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
+
+            const serviceQuery = service && cptCode ? `${service} (CPT code ${cptCode})` : cptCode ? `CPT code ${cptCode}` : service;
+            const displayLabel = service && cptCode
+                ? `${service.charAt(0).toUpperCase() + service.slice(1)} (CPT code ${cptCode})`
+                : cptCode ? `CPT code ${cptCode}`
+                : service.charAt(0).toUpperCase() + service.slice(1);
+
+            const paymentInfo = payment === 'insurance' && insuranceProvider ? `${insuranceProvider} insurance` : payment;
+            const message = `How much does ${serviceQuery} cost? My ZIP is ${zipcode} and I'm paying with ${paymentInfo}.`;
+            addMessage(message, 'user');
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+
+            try {
+                const data = await fetchPrices(message, { freshContext: true });
+                typingIndicator.classList.remove('active');
+                if (data.text) addMessage(data.text, 'assistant');
+                const variantName = data.resultState?.variant_name;
+                const resolvedLabel = variantName && cptCode ? `${variantName} (CPT code ${cptCode})` : variantName || displayLabel;
+                if (data.mapData && data.facilities.length > 0) {
+                    currentMapData = data.mapData; currentFacilities = data.facilities;
+                    currentWebFacilityPrices = data.webFacilityPrices || [];
+                    displayResults(data.mapData, data.facilities, resolvedLabel, currentWebFacilityPrices, data.resultState);
+                }
+                if (!data.text && (!data.mapData || data.facilities.length === 0)) {
+                    showError(`No pricing information found for ${resolvedLabel} near ZIP ${zipcode}. Try a different service, CPT code, or location.`);
+                }
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                showError('Failed to fetch prices. Please try again.');
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            } finally {
+                quickSearchBtn.disabled = false;
+                quickSearchBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Search Prices';
+            }
+        }
+
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message || isProcessing) return;
+            isProcessing = true; chatInput.value = ''; sendBtn.disabled = true; hideError();
+            addMessage(message, 'user'); typingIndicator.classList.add('active'); scrollToBottom();
+            try {
+                const data = await fetchPrices(message);
+                typingIndicator.classList.remove('active');
+                if (data.text) addMessage(data.text, 'assistant');
+                if (data.mapData && data.facilities.length > 0) {
+                    currentMapData = data.mapData; currentFacilities = data.facilities;
+                    currentWebFacilityPrices = data.webFacilityPrices || [];
+                    displayResults(data.mapData, data.facilities, null, currentWebFacilityPrices, data.resultState);
+                }
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            } finally { isProcessing = false; sendBtn.disabled = false; chatInput.focus(); }
+        }
+
+        async function fetchPrices(message, opts = {}) {
+            const body = { session_id: sessionId, message };
+            if (opts.freshContext) body.fresh_context = true;
+            const response = await fetch(`${API_BASE_URL}/chat_stream`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            const text = await response.text(), lines = text.split('\n');
+            let fullText = '', mapData = null, facilities = [], resultState = {}, webFacilityPrices = [];
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.type === 'session' && data.session_id) sessionId = data.session_id;
+                        if (data.type === 'delta' && data.text) fullText += data.text;
+                        if (data.type === 'results') { mapData = data.map_data; facilities = Array.isArray(data.facilities) ? data.facilities : []; resultState = data.state || {}; webFacilityPrices = Array.isArray(data.web_facility_prices) ? data.web_facility_prices : []; }
+                    } catch (e) {}
+                }
+            }
+            return { text: fullText, mapData, facilities, resultState, webFacilityPrices };
+        }
+
+        function showError(msg) { errorMessage.textContent = msg; errorMessage.classList.add('active'); try { errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {} }
+        function hideError() { errorMessage.classList.remove('active'); }
+
+        function addMessage(text, role) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            const avatar = role === 'assistant' ? '💬' : '👤';
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content"><div class="message-bubble">${formatted}</div><div class="message-time">${time}</div></div>`;
+            chatMessages.insertBefore(div, typingIndicator);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+
+        function normalizeAddressText(s) {
+            if (s == null || s === '') return '';
+            return String(s).replace(/\u00a0/g, ' ').replace(/Â+/g, '').replace(/\s+/g, ' ').trim();
+        }
+
+        function syncMapMarkersToSortedFacilities(sorted) {
+            if (!currentMapData) return;
+            const facilities = [];
+            sorted.slice(0, 5).forEach((f, i) => {
+                if (f.latitude == null || f.longitude == null) return;
+                facilities.push({ list_index: i+1, facility_key: f.facility_key || '', name: f.hospital_name || 'Healthcare Facility', latitude: f.latitude, longitude: f.longitude, address: normalizeAddressText(f.address || ''), price: f.price, web_price: f.web_price, distance_miles: f.distance_miles, estimated_range: f.estimated_range || '', website_url: f.website_url || '', payer_name: f.payer_name || null, payer_differs: f.payer_differs || false });
+            });
+            currentMapData = { ...currentMapData, facilities };
+            if (map) updateMap(currentMapData);
+        }
+
+        function facilityLinkLabel(url) {
+            if (!url) return 'View location';
+            return url.includes('google.com/maps') ? 'View on Google Maps' : 'Facility website';
+        }
+
+        function displayResults(mapData, facilities, serviceName, webFacilityPrices, resultState) {
+            resultsSection.classList.add('active');
+            const st = resultState || {}, md = mapData || {};
+            const cptCode = (st.code || md.procedure_code || '').toString().trim();
+            const procName = (st.procedure_display_name || md.procedure_display_name || '').trim();
+            let titleBody = (serviceName || '').trim();
+            if (procName && cptCode) titleBody = `${procName}, CPT code ${cptCode}`;
+            else if (!titleBody) {
+                titleBody = md.service_query ? md.service_query.charAt(0).toUpperCase() + md.service_query.slice(1) : 'Healthcare Service';
+                if (cptCode && !/CPT\s+code/i.test(titleBody)) titleBody = `${titleBody}, CPT code ${cptCode}`;
+            }
+            resultsTitle.textContent = `Results for ${titleBody}`;
+            resultsCount.textContent = `${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'}`;
+            renderWebSearchList(webFacilityPrices && webFacilityPrices.length ? webFacilityPrices : []);
+            const prices = facilities.filter(f => f.price).map(f => f.price);
+            const estimateNote = $('priceEstimateNote'), priceRangeSep = $('priceRangeSep');
+            if (prices.length > 0) { priceMin.textContent = `$${Math.min(...prices).toLocaleString()}`; priceMax.textContent = `$${Math.max(...prices).toLocaleString()}`; priceRangeSep.style.display = ''; estimateNote.style.display = 'none'; }
+            else { priceMin.textContent = ''; priceMax.textContent = ''; priceRangeSep.style.display = 'none'; estimateNote.style.display = 'inline'; }
+            sortAndRenderFacilities();
+            if (!map) initMap(currentMapData || mapData); else if (currentMapData) updateMap(currentMapData);
+            if (mapData.google_maps_url) { openMapsBtn.href = mapData.google_maps_url; openMapsBtn.style.display = 'flex'; }
+            setTimeout(() => { resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+        }
+
+        function sortAndRenderFacilities() {
+            let sorted = [...currentFacilities];
+            if (sortSelect.value === 'price') sorted.sort((a,b) => (a.price||Infinity)-(b.price||Infinity));
+            else sorted.sort((a,b) => (a.distance_miles||Infinity)-(b.distance_miles||Infinity));
+            renderFacilityList(sorted); syncMapMarkersToSortedFacilities(sorted);
+        }
+
+        let displayedFacilities = [];
+
+        function renderFacilityList(facilities) {
+            displayedFacilities = facilities;
+            facilityList.innerHTML = '';
+            const priceVals = facilities.map(x => x.price).filter(p => p != null && Number.isFinite(Number(p)));
+            const minListPrice = priceVals.length ? Math.min(...priceVals) : 0;
+            facilities.forEach((f, i) => {
+                const card = document.createElement('div');
+                card.className = 'facility-card';
+                const priceText = f.price ? `$${f.price.toLocaleString()}` : (f.estimated_range || 'Contact');
+                const priceClass = f.price ? (f.price <= minListPrice * 1.2 ? 'low' : '') : 'estimate';
+                const showWeb = f.web_price != null && Number(f.web_price) > 0;
+                let noteText = 'Estimate';
+                if (f.price) { if (f.price_source === 'web_search') noteText = 'Web search'; else if (f.price_source === 'db') noteText = 'DB price'; else if (showWeb) noteText = 'DB + web'; else noteText = 'Verified'; }
+                const webRow = (showWeb && f.price_source !== 'web_search') ? `<div class="facility-web-price">Web search: $${Number(f.web_price).toLocaleString()}</div>` : '';
+                let cardSiteHtml = '';
+                try {
+                    const siteUrl = (f.website_url || '').trim();
+                    if (siteUrl) {
+                        const u = new URL(siteUrl);
+                        if (u.protocol === 'http:' || u.protocol === 'https:') {
+                            const label = siteUrl.includes('google.com/maps') ? 'View on Google Maps ↗' : 'Visit website ↗';
+                            cardSiteHtml = `<div class="facility-website"><a href="${escapeHtml(u.href)}" target="_blank" rel="noopener noreferrer">${label}</a></div>`;
+                        }
+                    }
+                } catch(e) {}
+                const payerRow = (f.payer_differs && f.payer_name) ? `<div style="font-size:11px;font-weight:600;color:#d97706;margin-top:1px">Insurance covered by ${escapeHtml(f.payer_name)}</div>` : '';
+                card.innerHTML = `<div class="facility-row"><div class="facility-info"><div class="facility-index">${i+1}</div><div class="facility-details"><div class="facility-name">${escapeHtml(f.hospital_name || 'Healthcare Facility')}</div><div class="facility-type">Healthcare Facility</div>${payerRow}<div class="facility-location">${f.distance_miles ? `<span>📍 ${f.distance_miles.toFixed(1)} mi</span> ` : ''}<span>${escapeHtml(normalizeAddressText(f.address || ''))}</span>${cardSiteHtml}</div></div></div><div class="facility-pricing"><div class="facility-price ${priceClass}">${priceText}</div><div class="price-note">${noteText}</div>${webRow}</div></div>`;
+                card.addEventListener('click', () => selectFacility(i));
+                facilityList.appendChild(card);
+            });
+        }
+
+        function selectFacility(index) {
+            document.querySelectorAll('.facility-card').forEach((card, i) => card.classList.toggle('selected', i === index));
+            const f = displayedFacilities[index];
+            if (!f) return;
+            if (f.latitude && f.longitude) {
+                map.setView([f.latitude, f.longitude], 14);
+                for (let i = 1; i < markers.length; i++) {
+                    const ll = markers[i].getLatLng();
+                    if (Math.abs(ll.lat - f.latitude) < 0.0001 && Math.abs(ll.lng - f.longitude) < 0.0001) { markers[i].openPopup(); break; }
+                }
+                document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function initMap(mapData) {
+            if (!mapData?.center) return;
+            map = L.map('map').setView([mapData.center.latitude, mapData.center.longitude], mapData.zoom || 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            addMarkers(mapData);
+        }
+
+        function updateMap(mapData) {
+            if (!map || !mapData?.center) return;
+            markers.forEach(m => map.removeLayer(m)); priceLabels.forEach(l => map.removeLayer(l));
+            markers = []; priceLabels = [];
+            addMarkers(mapData); fitBounds(mapData);
+        }
+
+        function addMarkers(mapData) {
+            if (mapData.user_location?.latitude && mapData.user_location?.longitude) {
+                const userIcon = L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20,20], iconAnchor: [10,10] });
+                const um = L.marker([mapData.user_location.latitude, mapData.user_location.longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+                um.bindPopup(`<div class="popup-title">Your Location</div><div class="popup-address">${mapData.user_location.zipcode||''}</div>`);
+                markers.push(um);
+            }
+            if (mapData.facilities?.length > 0) {
+                mapData.facilities.forEach((f, idx) => {
+                    if (!f.latitude || !f.longitude) return;
+                    const num = f.list_index != null ? f.list_index : idx+1;
+                    const fi = L.divIcon({ className: '', html: `<div class="facility-marker">${num}</div>`, iconSize: [28,28], iconAnchor: [14,14] });
+                    const marker = L.marker([f.latitude, f.longitude], { icon: fi }).addTo(map);
+                    marker._facilityKey = f.facility_key || '';
+                    const addrSafe = escapeHtml(normalizeAddressText(f.address || ''));
+                    let costHtml = f.price != null && Number(f.price) > 0
+                        ? `<div style="margin-top:8px;font-size:15px;font-weight:600;color:#059669;">$${Number(f.price).toLocaleString()}</div>`
+                        : f.estimated_range
+                        ? `<div style="margin-top:8px;font-size:14px;font-weight:600;color:#666;">${escapeHtml(f.estimated_range)} <span style="font-size:11px;font-weight:400;">(estimate)</span></div>`
+                        : `<div style="margin-top:6px;font-size:13px;color:#888;">Contact for pricing</div>`;
+                    const wPx = f.web_price != null ? Number(f.web_price) : NaN;
+                    const mainPx = f.price != null ? Number(f.price) : NaN;
+                    const webLine = (Number.isFinite(wPx) && wPx > 0 && (!Number.isFinite(mainPx) || Math.abs(wPx-mainPx) > 5))
+                        ? `<div style="font-size:12px;color:#2563eb;margin-top:4px;">Web search: $${wPx.toLocaleString()}</div>` : '';
+                    let safeHref = '';
+                    try { const u = new URL((f.website_url||'').trim()); if (u.protocol==='http:'||u.protocol==='https:') safeHref = u.href; } catch(e) {}
+                    const linkHtml = safeHref ? `<div style="margin-top:10px;"><a href=${JSON.stringify(safeHref)} target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-weight:600;">${escapeHtml(facilityLinkLabel(safeHref))} ↗</a></div>` : '';
+                    marker.bindPopup(`<div class="popup-title">${escapeHtml(f.name||'Healthcare Facility')}</div><div class="popup-address">${addrSafe}</div><div class="popup-details"><span class="popup-distance">${f.distance_miles!=null?Number(f.distance_miles).toFixed(1)+' mi':''}</span></div>${costHtml}${webLine}${linkHtml}`);
+                    marker.on('click', () => { const ix = displayedFacilities.findIndex(x=>(x.facility_key||'')===(f.facility_key||'')); if (ix>=0) selectFacility(ix); });
+                    markers.push(marker);
+                    if (f.price != null && Number(f.price) > 0) {
+                        const pi = L.divIcon({ className: '', html: `<div class="price-label">$${Number(f.price).toLocaleString()}</div>`, iconSize:[60,20], iconAnchor:[30,-6] });
+                        priceLabels.push(L.marker([f.latitude,f.longitude],{icon:pi,interactive:false,zIndexOffset:-100}).addTo(map));
+                    } else if (f.estimated_range) {
+                        const short = f.estimated_range.length>14 ? f.estimated_range.slice(0,12)+'…' : f.estimated_range;
+                        const pi = L.divIcon({ className: '', html: `<div class="price-label" style="font-size:10px;">${escapeHtml(short)}</div>`, iconSize:[72,22], iconAnchor:[36,-6] });
+                        priceLabels.push(L.marker([f.latitude,f.longitude],{icon:pi,interactive:false,zIndexOffset:-100}).addTo(map));
+                    }
+                });
+            }
+            fitBounds(mapData);
+        }
+
+        function fitBounds(mapData) {
+            const coords = [];
+            if (mapData.user_location?.latitude && mapData.user_location?.longitude) coords.push([mapData.user_location.latitude, mapData.user_location.longitude]);
+            mapData.facilities?.forEach(f => { if (f.latitude && f.longitude) coords.push([f.latitude, f.longitude]); });
+            if (coords.length > 1) map.fitBounds(L.latLngBounds(coords), { padding: [48,48], maxZoom: 13 });
+        }
+    </script>
+</body>
+</html>

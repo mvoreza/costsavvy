@@ -1,0 +1,34 @@
+# Core data handling
+numpy
+pandas
+
+# Environment configuration
+python-dotenv
+
+# OpenAI SDK (pinned to avoid breaking changes)
+openai>=1.0.0,<2.0.0
+
+# Web framework + server (required for deploy)
+fastapi
+uvicorn[standard]
+
+# Async database access
+databases
+asyncpg
+
+# HTTP client for web search functionality
+httpx
+
+# Pydantic for request validation
+pydantic
+
+# Background job scheduler for nightly enrichment
+apscheduler>=3.10
+
+# File upload support
+python-multipart
+
+# Chargemaster file parsing (PDF, Excel, Word)
+pdfplumber
+openpyxl
+python-docx

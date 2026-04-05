@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: costsavvy-backend
+    env: python
+    plan: starter
+    region: oregon               # or frankfurt/singapore if better for your users
+    pythonVersion: "3.11"        # matches modern asyncpg + FastAPI
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # 🔐 DATABASE_URL — manually paste your *existing* DB URL in Render dashboard
+      - key: DATABASE_URL
+        sync: false
+
+      # 🔐 Required: set this in Render dashboard after deploy
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # ✅ Optional but recommended
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "30"
+      
+      # 🗺️ Map & search configuration
+      - key: MIN_FACILITIES_TO_DISPLAY
+        value: "5"
+      - key: MIN_DB_RESULTS_BEFORE_WEB
+        value: "3"
+      
+      # 🔍 Web search (optional - set keys in dashboard if using)
+      - key: WEB_SEARCH_ENABLED
+        value: "true"
+      # - key: BRAVE_API_KEY
+      #   sync: false
+      # - key: TAVILY_API_KEY
+      #   sync: false
+      
+      # 📍 Progressive radius for price lookups (miles)
+      - key: PRICE_RADIUS_ATTEMPTS
+        value: "10,25,50,100,200"
+
+      # - key: APP_API_KEY
+      #   generateValue: true   # uncomment to auto-generate a secure key

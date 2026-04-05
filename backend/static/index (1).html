@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CostSavvy - Healthcare Price Transparency</title>
+    <link rel="stylesheet" href="/static/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; }
+        
+        /* Header */
+        .header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); color: white; padding: 16px 24px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 22px; font-weight: 700; }
+        .header-subtitle { font-size: 13px; opacity: 0.9; }
+        
+        .main-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        /* Search Section */
+        .search-section { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .search-section h2 { font-size: 18px; color: #333; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .search-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #0d9488; }
+        .search-btn { background: #0d9488; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; height: 42px; display: flex; align-items: center; gap: 8px; }
+        .search-btn:hover { background: #0f766e; }
+        .search-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .search-divider { display: flex; align-items: center; margin: 20px 0; color: #888; font-size: 13px; }
+        .search-divider::before, .search-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+        .search-divider span { padding: 0 16px; }
+        
+        /* Error */
+        .error-message { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .error-message.active { display: block; }
+        
+        /* Results */
+        .results-section { display: none; margin-bottom: 20px; }
+        .results-section.active { display: block; }
+        .results-header-bar { background: white; padding: 16px 20px; border-radius: 12px 12px 0 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .results-title { font-size: 18px; font-weight: 600; color: #333; }
+        .results-meta { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #666; }
+        .price-range { display: flex; align-items: center; gap: 8px; }
+        .price-min { font-weight: 600; color: #059669; }
+        .price-max { font-weight: 600; color: #dc2626; }
+        .results-container { display: grid; grid-template-columns: 1fr 1.2fr; background: white; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        @media (max-width: 1000px) { .results-container { grid-template-columns: 1fr; } .map-section { order: -1; } }
+        
+        /* Facility List */
+        .facility-list-section { border-right: 1px solid #eee; }
+        .facility-list-header { padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .facility-list-header h3 { font-size: 14px; font-weight: 600; color: #555; }
+        .sort-select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; background: white; }
+        .facility-list { max-height: 400px; overflow-y: auto; }
+        .facility-card { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: all 0.2s; }
+        .facility-card:hover { background: #f9fafb; }
+        .facility-card.selected { background: #f0fdfa; border-left: 3px solid #0d9488; }
+        .facility-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .facility-info { display: flex; gap: 10px; flex: 1; }
+        .facility-index { background: #0d9488; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; flex-shrink: 0; }
+        .facility-details { flex: 1; }
+        .facility-name { font-weight: 600; color: #0d9488; font-size: 14px; margin-bottom: 2px; }
+        .facility-type { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .facility-location { font-size: 12px; color: #666; }
+        .facility-pricing { text-align: right; }
+        .facility-price { font-weight: 700; font-size: 18px; color: #333; }
+        .facility-price.low { color: #059669; }
+        .facility-price.estimate { color: #888; font-size: 14px; }
+        .price-note { font-size: 11px; color: #888; }
+        
+        /* Map */
+        .map-section { position: relative; }
+        .map-container { height: 400px; }
+        #map { width: 100%; height: 100%; }
+        .map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .map-controls input[type="checkbox"] { accent-color: #0d9488; }
+        .map-legend { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: white; padding: 8px 10px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 11px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .legend-item:last-child { margin-bottom: 0; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-dot.user { background: #2563eb; border: 2px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .legend-dot.facility { background: #0d9488; border: 2px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .open-maps-btn { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: #0d9488; color: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        .open-maps-btn:hover { background: #0f766e; color: white; }
+        
+        /* Map Markers */
+        .user-marker { background: #2563eb; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .facility-marker { background: #0d9488; color: white; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+        .price-label { background: white; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-weight: 600; font-size: 11px; color: #0d9488; white-space: nowrap; border: 1px solid #e5e7eb; }
+        
+        /* Popup */
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .leaflet-popup-content { margin: 10px 12px; min-width: 180px; }
+        .popup-title { color: #0d9488; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .popup-address { color: #666; font-size: 11px; margin-bottom: 6px; }
+        .popup-details { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid #eee; }
+        .popup-distance { font-size: 11px; color: #888; }
+        .popup-price { font-weight: bold; color: #0d9488; font-size: 16px; }
+        
+        /* Chat */
+        .chat-section { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .chat-header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h2 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .chat-status { font-size: 12px; opacity: 0.9; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; }
+        .chat-messages { height: 300px; overflow-y: auto; padding: 16px; background: #fafafa; }
+        .message { margin-bottom: 16px; display: flex; gap: 10px; }
+        .message.user { flex-direction: row-reverse; }
+        .message-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .message.assistant .message-avatar { background: #0d9488; color: white; }
+        .message.user .message-avatar { background: #e5e7eb; color: #666; }
+        .message-content { max-width: 75%; }
+        .message-bubble { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+        .message.assistant .message-bubble { background: white; color: #333; border: 1px solid #eee; border-radius: 12px 12px 12px 4px; }
+        .message.user .message-bubble { background: #0d9488; color: white; border-radius: 12px 12px 4px 12px; }
+        .message-time { font-size: 11px; color: #999; margin-top: 4px; }
+        .message.user .message-time { text-align: right; }
+        .typing-indicator { display: none; padding: 10px 14px; background: white; border: 1px solid #eee; border-radius: 12px; width: fit-content; }
+        .typing-indicator.active { display: block; }
+        .typing-dots { display: flex; gap: 4px; }
+        .typing-dots span { width: 8px; height: 8px; background: #0d9488; border-radius: 50%; animation: typing 1.4s infinite; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+        .chat-input-container { padding: 16px; background: white; border-top: 1px solid #eee; }
+        .chat-input-wrapper { display: flex; gap: 10px; }
+        .chat-input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; font-size: 14px; outline: none; }
+        .chat-input:focus { border-color: #0d9488; }
+        .send-btn { background: #0d9488; color: white; border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .send-btn:hover { background: #0f766e; }
+        .send-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .send-btn svg { width: 20px; height: 20px; }
+        .quick-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .quick-action { padding: 8px 14px; background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; border-radius: 20px; font-size: 13px; cursor: pointer; }
+        .quick-action:hover { background: #0d9488; color: white; border-color: #0d9488; }
+        .message-bubble strong { font-weight: 600; }
+        .message-bubble ul, .message-bubble ol { margin: 8px 0; padding-left: 20px; }
+        .message-bubble li { margin-bottom: 4px; }
+        .message-bubble a { color: #0d9488; text-decoration: underline; }
+        .message.user .message-bubble a { color: #a7f3d0; }
+        .search-btn .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <div class="logo">🏥 CostSavvy</div>
+                <div class="header-subtitle">Healthcare Price Transparency</div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <!-- Quick Search -->
+        <section class="search-section">
+            <h2>🔍 Quick Price Search</h2>
+            <form class="search-form" id="quickSearchForm">
+                <div class="form-group">
+                    <label for="service">Service</label>
+                    <select id="service" required>
+                        <option value="">Select a service...</option>
+                        <optgroup label="Imaging">
+                            <option value="xray">X-Ray</option>
+                            <option value="mri">MRI</option>
+                            <option value="ct scan">CT Scan</option>
+                            <option value="ultrasound">Ultrasound</option>
+                            <option value="mammogram">Mammogram</option>
+                        </optgroup>
+                        <optgroup label="Procedures">
+                            <option value="colonoscopy">Colonoscopy</option>
+                            <option value="endoscopy">Endoscopy</option>
+                        </optgroup>
+                        <optgroup label="Lab Tests">
+                            <option value="blood test">Blood Test</option>
+                            <option value="urinalysis">Urinalysis</option>
+                        </optgroup>
+                        <optgroup label="Visits">
+                            <option value="office visit">Office Visit</option>
+                            <option value="emergency room">Emergency Room</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="zipcode">ZIP Code</label>
+                    <input type="text" id="zipcode" placeholder="e.g., 06119" maxlength="5" pattern="[0-9]{5}" required>
+                </div>
+                <div class="form-group">
+                    <label for="payment">Payment Type</label>
+                    <select id="payment">
+                        <option value="cash">Cash / Self-Pay</option>
+                        <option value="insurance">Insurance</option>
+                    </select>
+                </div>
+                <button type="submit" class="search-btn" id="quickSearchBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                    Search Prices
+                </button>
+            </form>
+            <div class="search-divider"><span>or ask our AI assistant below</span></div>
+        </section>
+
+        <div class="error-message" id="errorMessage"></div>
+        
+        <!-- Results -->
+        <section class="results-section" id="resultsSection">
+            <div class="results-header-bar">
+                <div class="results-title" id="resultsTitle">Results</div>
+                <div class="results-meta">
+                    <div class="price-range">
+                        <span style="color:#888">Price range:</span>
+                        <span class="price-min" id="priceMin">$0</span>
+                        <span>–</span>
+                        <span class="price-max" id="priceMax">$0</span>
+                    </div>
+                    <span id="resultsCount">0 facilities</span>
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="facility-list-section">
+                    <div class="facility-list-header">
+                        <h3>Nearby Facilities</h3>
+                        <select class="sort-select" id="sortSelect">
+                            <option value="price">Lowest price</option>
+                            <option value="distance">Nearest</option>
+                        </select>
+                    </div>
+                    <div class="facility-list" id="facilityList"></div>
+                </div>
+                <div class="map-section">
+                    <div class="map-container">
+                        <div id="map"></div>
+                        <div class="map-controls">
+                            <input type="checkbox" id="searchWhenMoving" checked>
+                            <label for="searchWhenMoving">Search when moving</label>
+                        </div>
+                        <div class="map-legend">
+                            <div class="legend-item"><div class="legend-dot user"></div><span>Your location</span></div>
+                            <div class="legend-item"><div class="legend-dot facility"></div><span>Facilities</span></div>
+                        </div>
+                        <a href="#" id="openMapsBtn" class="open-maps-btn" target="_blank" style="display:none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Chat -->
+        <section class="chat-section">
+            <div class="chat-header">
+                <h2>💬 AI Healthcare Price Assistant</h2>
+                <div class="chat-status"><div class="status-dot"></div>Online</div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Hi! I'm your healthcare price assistant. <strong>Use the Quick Search above</strong> for common services, or ask me anything like:
+                            <ul>
+                                <li>"How much does an MRI cost?"</li>
+                                <li>"Find X-ray prices near 06119"</li>
+                                <li>"Compare colonoscopy prices"</li>
+                            </ul>
+                        </div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+            </div>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask about healthcare prices..." autocomplete="off">
+                    <button class="send-btn" id="sendBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+                <div class="quick-actions">
+                    <button class="quick-action" data-message="How much does an X-ray cost?">X-Ray prices</button>
+                    <button class="quick-action" data-message="How much does an MRI cost?">MRI prices</button>
+                    <button class="quick-action" data-message="How much does a CT scan cost?">CT Scan prices</button>
+                    <button class="quick-action" data-message="How much does a colonoscopy cost?">Colonoscopy</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/leaflet.js"></script>
+    <script>
+        const API_BASE_URL = window.location.origin;
+        let sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        let map = null, markers = [], priceLabels = [], currentMapData = null, currentFacilities = [], isProcessing = false;
+        
+        const $ = id => document.getElementById(id);
+        const quickSearchForm = $('quickSearchForm'), quickSearchBtn = $('quickSearchBtn'), chatMessages = $('chatMessages');
+        const chatInput = $('chatInput'), sendBtn = $('sendBtn'), typingIndicator = $('typingIndicator');
+        const resultsSection = $('resultsSection'), facilityList = $('facilityList'), resultsTitle = $('resultsTitle');
+        const resultsCount = $('resultsCount'), priceMin = $('priceMin'), priceMax = $('priceMax');
+        const openMapsBtn = $('openMapsBtn'), sortSelect = $('sortSelect'), errorMessage = $('errorMessage');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            quickSearchForm.addEventListener('submit', handleQuickSearch);
+            chatInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !isProcessing) sendMessage(); });
+            sendBtn.addEventListener('click', () => { if (!isProcessing) sendMessage(); });
+            document.querySelectorAll('.quick-action').forEach(btn => btn.addEventListener('click', () => { chatInput.value = btn.dataset.message; sendMessage(); }));
+            sortSelect.addEventListener('change', sortAndRenderFacilities);
+        });
+        
+        async function handleQuickSearch(e) {
+            e.preventDefault();
+            const service = $('service').value, zipcode = $('zipcode').value, payment = $('payment').value;
+            if (!service || !zipcode) { showError('Please select a service and enter your ZIP code'); return; }
+            
+            quickSearchBtn.disabled = true;
+            quickSearchBtn.innerHTML = '<div class="spinner"></div> Searching...';
+            hideError();
+            
+            const message = `How much does a ${service} cost? My ZIP is ${zipcode} and I'm paying ${payment}.`;
+            addMessage(message, 'user');
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+            
+            try {
+                const data = await fetchPrices(message);
+                typingIndicator.classList.remove('active');
+                if (data.text) addMessage(data.text, 'assistant');
+                if (data.mapData && data.facilities.length > 0) {
+                    currentMapData = data.mapData; currentFacilities = data.facilities;
+                    displayResults(data.mapData, data.facilities, service);
+                } else { showError('No results found. Try a different service or location.'); }
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                showError('Failed to fetch prices. Please try again.');
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            } finally {
+                quickSearchBtn.disabled = false;
+                quickSearchBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg> Search Prices';
+            }
+        }
+        
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message || isProcessing) return;
+            isProcessing = true; chatInput.value = ''; sendBtn.disabled = true; hideError();
+            addMessage(message, 'user');
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+            
+            try {
+                const data = await fetchPrices(message);
+                typingIndicator.classList.remove('active');
+                if (data.text) addMessage(data.text, 'assistant');
+                if (data.mapData && data.facilities.length > 0) {
+                    currentMapData = data.mapData; currentFacilities = data.facilities;
+                    displayResults(data.mapData, data.facilities);
+                }
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            } finally { isProcessing = false; sendBtn.disabled = false; chatInput.focus(); }
+        }
+        
+        async function fetchPrices(message) {
+            const response = await fetch(`${API_BASE_URL}/chat_stream`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId, message })
+            });
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            const text = await response.text(), lines = text.split('\n');
+            let fullText = '', mapData = null, facilities = [];
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.type === 'delta' && data.text) fullText += data.text;
+                        if (data.type === 'results') { mapData = data.map_data; facilities = data.facilities || []; }
+                    } catch (e) {}
+                }
+            }
+            return { text: fullText, mapData, facilities };
+        }
+        
+        function showError(msg) { errorMessage.textContent = msg; errorMessage.classList.add('active'); }
+        function hideError() { errorMessage.classList.remove('active'); }
+        
+        function addMessage(text, role) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            const avatar = role === 'assistant' ? '🤖' : '👤';
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content"><div class="message-bubble">${formatted}</div><div class="message-time">${time}</div></div>`;
+            chatMessages.insertBefore(div, typingIndicator);
+            scrollToBottom();
+        }
+        
+        function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+        
+        function displayResults(mapData, facilities, serviceName) {
+            resultsSection.classList.add('active');
+            const service = serviceName || mapData.service_query || 'Healthcare Service';
+            resultsTitle.textContent = `Results for ${service.charAt(0).toUpperCase() + service.slice(1)}`;
+            resultsCount.textContent = `${facilities.length} facilities`;
+            const prices = facilities.filter(f => f.price).map(f => f.price);
+            if (prices.length > 0) { priceMin.textContent = `$${Math.min(...prices).toLocaleString()}`; priceMax.textContent = `$${Math.max(...prices).toLocaleString()}`; }
+            sortAndRenderFacilities();
+            if (!map) initMap(mapData); else updateMap(mapData);
+            if (mapData.google_maps_url) { openMapsBtn.href = mapData.google_maps_url; openMapsBtn.style.display = 'flex'; }
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function sortAndRenderFacilities() {
+            let sorted = [...currentFacilities];
+            if (sortSelect.value === 'price') sorted.sort((a, b) => (a.price || Infinity) - (b.price || Infinity));
+            else sorted.sort((a, b) => (a.distance_miles || Infinity) - (b.distance_miles || Infinity));
+            renderFacilityList(sorted);
+        }
+        
+        function renderFacilityList(facilities) {
+            facilityList.innerHTML = '';
+            facilities.forEach((f, i) => {
+                const card = document.createElement('div');
+                card.className = 'facility-card';
+                const priceText = f.price ? `$${f.price.toLocaleString()}` : (f.estimated_range || 'Contact');
+                const priceClass = f.price ? (f.price <= (currentFacilities[0]?.price || 0) * 1.2 ? 'low' : '') : 'estimate';
+                card.innerHTML = `<div class="facility-row"><div class="facility-info"><div class="facility-index">${i + 1}</div><div class="facility-details"><div class="facility-name">${f.hospital_name || 'Healthcare Facility'}</div><div class="facility-type">Healthcare Facility</div><div class="facility-location">${f.distance_miles ? `<span>📍 ${f.distance_miles.toFixed(1)} mi</span>` : ''} <span>${f.address || ''}</span></div></div></div><div class="facility-pricing"><div class="facility-price ${priceClass}">${priceText}</div><div class="price-note">${f.price ? 'Verified' : 'Estimate'}</div></div></div>`;
+                card.addEventListener('click', () => selectFacility(i));
+                facilityList.appendChild(card);
+            });
+        }
+        
+        function selectFacility(index) {
+            document.querySelectorAll('.facility-card').forEach((card, i) => card.classList.toggle('selected', i === index));
+            if (currentMapData?.facilities?.[index] && markers[index + 1]) {
+                const f = currentMapData.facilities[index];
+                map.setView([f.latitude, f.longitude], 14);
+                markers[index + 1].openPopup();
+            }
+        }
+        
+        function initMap(mapData) {
+            if (!mapData?.center) return;
+            map = L.map('map').setView([mapData.center.latitude, mapData.center.longitude], mapData.zoom || 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            addMarkers(mapData);
+        }
+        
+        function updateMap(mapData) {
+            if (!map || !mapData?.center) return;
+            markers.forEach(m => map.removeLayer(m)); priceLabels.forEach(l => map.removeLayer(l));
+            markers = []; priceLabels = [];
+            addMarkers(mapData); fitBounds(mapData);
+        }
+        
+        function addMarkers(mapData) {
+            if (mapData.user_location?.latitude && mapData.user_location?.longitude) {
+                const userIcon = L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+                const userMarker = L.marker([mapData.user_location.latitude, mapData.user_location.longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+                userMarker.bindPopup(`<div class="popup-title">Your Location</div><div class="popup-address">${mapData.user_location.zipcode || ''}</div>`);
+                markers.push(userMarker);
+            }
+            if (mapData.facilities?.length > 0) {
+                mapData.facilities.forEach((f, idx) => {
+                    if (!f.latitude || !f.longitude) return;
+                    const facilityIcon = L.divIcon({ className: '', html: `<div class="facility-marker">${idx + 1}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+                    const marker = L.marker([f.latitude, f.longitude], { icon: facilityIcon }).addTo(map);
+                    const priceText = f.price ? `$${f.price.toLocaleString()}` : 'Contact';
+                    marker.bindPopup(`<div class="popup-title">${f.name || 'Healthcare Facility'}</div><div class="popup-address">${f.address || ''}</div><div class="popup-details"><span class="popup-distance">${f.distance_miles ? f.distance_miles.toFixed(1) + ' mi' : ''}</span><span class="popup-price">${priceText}</span></div>`);
+                    marker.on('click', () => selectFacility(idx));
+                    markers.push(marker);
+                    if (f.price) {
+                        const priceIcon = L.divIcon({ className: '', html: `<div class="price-label">$${f.price.toLocaleString()}</div>`, iconSize: [60, 20], iconAnchor: [30, -6] });
+                        priceLabels.push(L.marker([f.latitude, f.longitude], { icon: priceIcon, interactive: false, zIndexOffset: -100 }).addTo(map));
+                    }
+                });
+            }
+            fitBounds(mapData);
+        }
+        
+        function fitBounds(mapData) {
+            const coords = [];
+            if (mapData.user_location?.latitude && mapData.user_location?.longitude) coords.push([mapData.user_location.latitude, mapData.user_location.longitude]);
+            mapData.facilities?.forEach(f => { if (f.latitude && f.longitude) coords.push([f.latitude, f.longitude]); });
+            if (coords.length > 1) map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
+        }
+    </script>
+</body>
+</html>

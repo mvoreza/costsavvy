@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node / Next.js
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+tmp/

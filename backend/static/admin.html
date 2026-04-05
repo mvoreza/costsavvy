@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CostSavvy Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --primary: #6b2458; --primary-dark: #5a1e4a; --primary-light: #8C2F5D; --bg: #f8f6f7; --sidebar: #2d1120; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); min-height: 100vh; }
+
+    /* ── Login ──────────────────────────────────────── */
+    #login-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: var(--primary);
+    }
+    .login-card {
+      background: white; border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .login-logo { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--primary); text-align: center; margin-bottom: 4px; }
+    .login-sub { text-align: center; color: #888; font-size: 13px; margin-bottom: 28px; }
+    .login-label { font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; display: block; }
+    .login-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+    }
+    .login-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(107,36,88,0.1); }
+    .login-btn {
+      width: 100%; margin-top: 20px; padding: 13px; background: var(--primary);
+      color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: background 0.2s;
+    }
+    .login-btn:hover { background: var(--primary-dark); }
+    .login-err { color: #dc2626; font-size: 13px; margin-top: 10px; text-align: center; display: none; }
+
+    /* ── App shell ──────────────────────────────────── */
+    #app { display: none; flex; min-height: 100vh; }
+    #app.visible { display: flex; }
+    .sidebar {
+      width: 220px; background: var(--sidebar); flex-shrink: 0;
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh;
+    }
+    .sidebar-logo { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .sidebar-logo a { color: white; text-decoration: none; font-family: 'Playfair Display', serif; font-size: 18px; display: block; }
+    .sidebar-logo span { display: block; font-family: 'Inter', sans-serif; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; font-weight: 400; }
+    .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+      border-radius: 8px; border: none; background: none; color: rgba(255,255,255,0.65);
+      font-size: 14px; font-family: inherit; font-weight: 500; cursor: pointer;
+      transition: background 0.15s, color 0.15s; text-align: left;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+    .nav-btn.active { background: var(--primary); color: white; }
+    .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-footer { padding: 16px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .logout-btn {
+      display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.5);
+      font-size: 13px; background: none; border: none; cursor: pointer; font-family: inherit;
+      transition: color 0.15s;
+    }
+    .logout-btn:hover { color: white; }
+    .content { margin-left: 220px; flex: 1; padding: 36px 40px; min-height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    .page-sub { color: #888; font-size: 14px; margin-bottom: 28px; }
+
+    /* ── Cards ──────────────────────────────────────── */
+    .card { background: white; border-radius: 14px; border: 1px solid #e8e8e8; padding: 24px; }
+    .card + .card { margin-top: 20px; }
+    .card-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── Dashboard grid ─────────────────────────────── */
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .dash-card {
+      background: white; border-radius: 14px; border: 1px solid #e8e8e8; padding: 22px;
+      cursor: pointer; transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .dash-card:hover { box-shadow: 0 4px 16px rgba(107,36,88,0.1); border-color: rgba(107,36,88,0.3); }
+    .dash-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .dash-card h3 { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .dash-card p { font-size: 12px; color: #888; line-height: 1.4; }
+
+    /* ── Form elements ──────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s; background: white;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(107,36,88,0.08); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px; background: var(--primary);
+      color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* ── Alert ──────────────────────────────────────── */
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .alert.active { display: block; }
+    .alert-ok { background: #f0fdf4; color: #166534; }
+    .alert-err { background: #fef2f2; color: #dc2626; }
+
+    /* ── Drop zone ──────────────────────────────────── */
+    .dropzone {
+      border: 2px dashed #d1d5db; border-radius: 12px; padding: 48px 24px; text-align: center;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .dropzone.over { border-color: var(--primary); background: rgba(107,36,88,0.04); }
+    .dropzone svg { color: #9ca3af; margin-bottom: 12px; }
+    .dropzone p { color: #555; font-size: 14px; font-weight: 500; }
+    .dropzone small { color: #9ca3af; font-size: 12px; }
+
+    /* ── File queue ─────────────────────────────────── */
+    .file-list { list-style: none; margin-top: 16px; space-y: 8px; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; }
+    .file-item span { flex: 1; font-size: 13px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .file-size { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+    .file-remove { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; line-height: 1; flex-shrink: 0; }
+    .file-remove:hover { color: #dc2626; }
+
+    /* ── Table ──────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: #f0fdf4; color: #166534; }
+    .badge-err { background: #fef2f2; color: #dc2626; }
+    .badge-proc { background: #fefce8; color: #854d0e; }
+
+    /* ── Video thumb ─────────────────────────────────── */
+    .video-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .video-card { background: white; border: 1px solid #e8e8e8; border-radius: 12px; overflow: hidden; }
+    .video-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+    .video-body { padding: 14px; }
+    .video-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .video-cat { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .video-actions { display: flex; gap: 8px; }
+
+    /* ── Loader ──────────────────────────────────────── */
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .spinner-dark { border-color: rgba(107,36,88,0.2); border-top-color: var(--primary); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-row td { text-align: center; padding: 40px; color: #9ca3af; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .content { margin-left: 0; padding: 20px; }
+      #app.visible { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ───────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">CostSavvy</div>
+    <div class="login-sub">Admin Portal</div>
+    <label class="login-label" for="admin-key">Admin Key</label>
+    <input id="admin-key" type="password" class="login-input" placeholder="Enter your admin key" autocomplete="current-password" />
+    <div id="login-err" class="login-err">Invalid admin key. Please try again.</div>
+    <button id="login-btn" class="login-btn">Sign In</button>
+    <div style="margin-top:20px;text-align:center;">
+      <a href="/" style="font-size:13px;color:#888;text-decoration:none;">← Back to CostSavvy</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ─────────────────────────────────────────────── -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <a href="/">CostSavvy <span>Admin Portal</span></a>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-page="dashboard">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-page="articles">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Articles
+      </button>
+      <button class="nav-btn" data-page="videos">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        YouTube Videos
+      </button>
+      <button class="nav-btn" data-page="upload">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+        CPT Upload
+      </button>
+      <button class="nav-btn" data-page="csvfiles">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        CSV Repository
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" id="logout-btn">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <main class="content">
+
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Admin Dashboard</div>
+      <div class="page-sub">Manage CostSavvy content and price data</div>
+      <div class="dash-grid">
+        <div class="dash-card" onclick="showPage('articles')">
+          <div class="dash-icon" style="background:#eff6ff"><svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <h3>Articles</h3>
+          <p>Manage blog posts via Sanity CMS</p>
+        </div>
+        <div class="dash-card" onclick="showPage('videos')">
+          <div class="dash-icon" style="background:#fef2f2"><svg width="20" height="20" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+          <h3>YouTube Videos</h3>
+          <p>Publish educational video content</p>
+        </div>
+        <div class="dash-card" onclick="showPage('upload')">
+          <div class="dash-icon" style="background:#f0fdf4"><svg width="20" height="20" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg></div>
+          <h3>CPT Upload</h3>
+          <p>Upload hospital charge CSV files</p>
+        </div>
+        <div class="dash-card" onclick="showPage('csvfiles')">
+          <div class="dash-icon" style="background:#faf5ff"><svg width="20" height="20" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <h3>CSV Repository</h3>
+          <p>Browse uploaded files and status</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:500px">
+        <div class="card-title">Quick Links</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <a href="/" target="_blank" style="padding:8px 14px;background:#f3f4f6;border-radius:8px;font-size:13px;color:#555;text-decoration:none;">Price Search ↗</a>
+          <a href="https://www.costsavvy.health" target="_blank" style="padding:8px 14px;background:#f3f4f6;border-radius:8px;font-size:13px;color:#555;text-decoration:none;">Live Site ↗</a>
+          <a href="https://www.sanity.io/manage" target="_blank" style="padding:8px 14px;background:#f3f4f6;border-radius:8px;font-size:13px;color:#555;text-decoration:none;">Sanity Studio ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Articles -->
+    <div class="page" id="page-articles">
+      <div class="page-title">Articles</div>
+      <div class="page-sub">Manage blog posts and healthcare guides</div>
+      <div class="card" style="max-width:560px;text-align:center;padding:48px 36px">
+        <div style="width:56px;height:56px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <svg width="26" height="26" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div style="font-size:17px;font-weight:600;color:#1a1a1a;margin-bottom:8px">Manage content in Sanity Studio</div>
+        <p style="color:#888;font-size:14px;line-height:1.6;margin-bottom:24px">Blog posts, hero taglines, rotating words, and procedure chips are managed through Sanity CMS.</p>
+        <a href="https://www.sanity.io/manage" target="_blank" class="btn-primary" style="display:inline-flex">
+          Open Sanity Studio ↗
+        </a>
+        <div style="margin-top:28px;text-align:left;border-top:1px solid #f3f4f6;padding-top:20px">
+          <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">What you can manage</div>
+          <ul style="list-style:none;space-y:6px">
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;background:var(--primary);border-radius:50%;flex-shrink:0"></span>Blog articles and guides</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;background:var(--primary);border-radius:50%;flex-shrink:0"></span>Hero tagline and rotating words</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;background:var(--primary);border-radius:50%;flex-shrink:0"></span>Common procedure chips</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;background:var(--primary);border-radius:50%;flex-shrink:0"></span>Featured promotions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Videos -->
+    <div class="page" id="page-videos">
+      <div class="page-title">YouTube Videos</div>
+      <div class="page-sub">Publish educational video content</div>
+      <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px;align-items:start;max-width:900px">
+        <!-- Add form -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Add Video
+          </div>
+          <div id="video-alert" class="alert"></div>
+          <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input id="v-title" class="form-input" placeholder="e.g. How to Compare Hospital Prices" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">YouTube URL *</label>
+            <input id="v-url" class="form-input" placeholder="https://www.youtube.com/watch?v=..." />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="v-cat" class="form-select">
+              <option>General</option><option>Pricing Guide</option><option>How It Works</option>
+              <option>Insurance</option><option>Medicare</option><option>News</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (optional)</label>
+            <textarea id="v-desc" class="form-textarea" placeholder="Short description…"></textarea>
+          </div>
+          <button id="add-video-btn" class="btn-primary" style="width:100%;justify-content:center" onclick="addVideo()">
+            Add Video
+          </button>
+        </div>
+        <!-- List -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="16" height="16" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            Published Videos
+          </div>
+          <div id="video-list-wrap">
+            <div style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CPT Upload -->
+    <div class="page" id="page-upload">
+      <div class="page-title">CPT Code Upload</div>
+      <div class="page-sub">Upload CMS hospital standard charge CSV files — the AI will use them for price search</div>
+      <div style="max-width:600px">
+        <div class="card">
+          <div id="drop-zone" class="dropzone">
+            <svg width="40" height="40" fill="none" stroke="#9ca3af" stroke-width="1.5" viewBox="0 0 24 24" style="display:block;margin:0 auto 12px"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+            <p>Drop CSV files here or click to browse</p>
+            <small>CMS hospital standard charge format · Multiple files allowed</small>
+            <input id="csv-input" type="file" accept=".csv" multiple style="display:none" />
+          </div>
+          <ul id="file-queue" class="file-list" style="display:none"></ul>
+          <button id="upload-btn" class="btn-primary" style="width:100%;justify-content:center;margin-top:16px;display:none" onclick="uploadAll()">
+            Upload All
+          </button>
+        </div>
+
+        <div id="upload-results" style="display:none" class="card">
+          <div class="card-title">Upload Results</div>
+          <div id="results-list"></div>
+        </div>
+
+        <!-- PDF / Excel / Word Upload -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-title">Upload Chargemaster File</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:6px">For hospitals that publish pricing as a PDF, Excel, or Word document.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <span style="font-size:11px;background:#f3e8ff;color:#6b2458;padding:2px 8px;border-radius:20px;font-weight:600">PDF</span>
+            <span style="font-size:11px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-weight:600">XLSX / XLS</span>
+            <span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:20px;font-weight:600">DOCX / DOC</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input id="pdf-hospital-name" type="text" placeholder="Hospital name (required)"
+              style="padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;outline:none"
+              onfocus="this.style.borderColor='#6b2458'" onblur="this.style.borderColor='#e2e8f0'" />
+            <input id="pdf-input" type="file" accept=".pdf,.xlsx,.xls,.docx,.doc" style="font-size:13px;color:#6b7280" />
+            <button class="btn-primary" onclick="uploadPdf(this)" style="width:100%;justify-content:center">Upload File</button>
+          </div>
+          <div id="pdf-result" style="margin-top:12px;font-size:13px"></div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <div class="card-title">Expected CSV Format</div>
+          <ul style="list-style:none">
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:start;gap:8px"><span style="color:var(--primary);flex-shrink:0">•</span>CMS hospital standard charge files (900-series format)</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:start;gap:8px"><span style="color:var(--primary);flex-shrink:0">•</span>Must contain a column for CPT/procedure code</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:start;gap:8px"><span style="color:var(--primary);flex-shrink:0">•</span>Should include gross charge or cash/discounted price columns</li>
+            <li style="font-size:13px;color:#555;padding:5px 0;display:flex;align-items:start;gap:8px"><span style="color:var(--primary);flex-shrink:0">•</span>Up to 50,000 rows per file supported</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- CSV Repository -->
+    <div class="page" id="page-csvfiles">
+      <div class="page-title">CSV Repository</div>
+      <div class="page-sub" id="csv-sub">Loading…</div>
+
+      <!-- CPT Cross-Hospital Search -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title" style="margin-bottom:14px">🔍 Search CPT Code Across All Hospitals</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <input id="cpt-search-input" type="text" placeholder="Enter CPT or HCPCS code, e.g. 96401"
+            style="flex:1;padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;outline:none"
+            onkeydown="if(event.key==='Enter')cptSearch()"
+            onfocus="this.style.borderColor='#6b2458'" onblur="this.style.borderColor='#e2e8f0'" />
+          <button class="btn-primary" onclick="cptSearch()" id="cpt-search-btn" style="white-space:nowrap">Search</button>
+        </div>
+        <div id="cpt-search-results" style="display:none">
+          <div id="cpt-search-summary" style="font-size:13px;color:#6b7280;margin-bottom:10px"></div>
+          <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+            <table id="cpt-search-table">
+              <thead>
+                <tr>
+                  <th>Hospital</th>
+                  <th>Description</th>
+                  <th>Payer / Plan</th>
+                  <th style="text-align:right">Cash</th>
+                  <th style="text-align:right">Gross</th>
+                  <th style="text-align:right">Negotiated</th>
+                </tr>
+              </thead>
+              <tbody id="cpt-search-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin:0">Uploaded Files</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary btn-sm" onclick="backfillRegistry(this)" title="Import hospitals already in the database into this registry">⬇ Import Existing Data</button>
+            <button class="btn-primary btn-sm" onclick="loadCsvFiles()">↺ Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th><th>Hospital</th><th style="text-align:right">Rows</th>
+                <th>Uploaded</th><th>Status</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="csv-table-body">
+              <tr class="loading-row"><td colspan="6"><div class="spinner spinner-dark" style="margin:0 auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price Viewer Modal -->
+    <div id="csv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto">
+      <div style="background:white;border-radius:16px;width:100%;max-width:900px;box-shadow:0 24px 80px rgba(0,0,0,0.25)">
+        <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div id="modal-hospital-name" style="font-weight:700;font-size:17px;color:#111"></div>
+            <div id="modal-row-count" style="font-size:13px;color:#6b7280;margin-top:2px"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="modal-search" type="text" placeholder="Search code / description…" oninput="modalSearch()" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;width:220px;font-family:inherit;outline:none" />
+            <button id="modal-export-btn" onclick="exportCsv()" class="btn-primary btn-sm">⬇ Export CSV</button>
+            <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#9ca3af;line-height:1">✕</button>
+          </div>
+        </div>
+        <div style="padding:16px 24px">
+          <div class="table-wrap" style="max-height:480px;overflow-y:auto">
+            <table id="modal-table">
+              <thead>
+                <tr>
+                  <th>Code</th><th>Type</th><th>Description</th>
+                  <th style="text-align:right">Cash</th><th style="text-align:right">Gross</th>
+                  <th style="text-align:right">Negotiated</th><th>Payer</th>
+                </tr>
+              </thead>
+              <tbody id="modal-tbody"></tbody>
+            </table>
+          </div>
+          <div id="modal-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:#6b7280"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const API = '';
+  let adminKey = '';
+  const pendingFiles = [];
+
+  // ── Auth ─────────────────────────────────────────────────
+  function getKey() { return sessionStorage.getItem('cs_admin_key') || ''; }
+
+  async function verifyKey(key) {
+    try {
+      const r = await fetch(`${API}/admin/csv-files?limit=1`, { headers: { 'X-Admin-Key': key } });
+      return r.status !== 403 && r.status !== 503;
+    } catch { return false; }
+  }
+
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const key = document.getElementById('admin-key').value.trim();
+    if (!key) return;
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    const ok = await verifyKey(key);
+    if (ok) {
+      sessionStorage.setItem('cs_admin_key', key);
+      adminKey = key;
+      showApp();
+    } else {
+      document.getElementById('login-err').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Sign In';
+    }
+  });
+
+  document.getElementById('admin-key').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    sessionStorage.removeItem('cs_admin_key');
+    location.reload();
+  });
+
+  async function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    const app = document.getElementById('app');
+    app.classList.add('visible');
+    await loadVideos();
+    await loadCsvFiles();
+  }
+
+  // ── Navigation ────────────────────────────────────────────
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelector(`[data-page="${id}"]`).classList.add('active');
+    if (id === 'videos') loadVideos();
+    if (id === 'csvfiles') loadCsvFiles();
+  }
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => showPage(btn.dataset.page));
+  });
+
+  // ── Videos ───────────────────────────────────────────────
+  function ytId(url) {
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  async function loadVideos() {
+    const wrap = document.getElementById('video-list-wrap');
+    wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">Loading…</div>';
+    try {
+      const r = await fetch(`${API}/admin/videos`, { headers: { 'X-Admin-Key': getKey() } });
+      const videos = await r.json();
+      if (!videos.length) {
+        wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">No videos yet. Add one on the left.</div>';
+        return;
+      }
+      wrap.innerHTML = videos.map(v => {
+        const id = ytId(v.youtube_url);
+        const thumb = id ? `<img class="video-thumb" src="https://img.youtube.com/vi/${id}/mqdefault.jpg" />` : '';
+        return `<div class="video-card">
+          ${thumb}
+          <div class="video-body">
+            <div class="video-title">${esc(v.title)}</div>
+            <div class="video-cat">${esc(v.category)}</div>
+            <div class="video-actions">
+              <a href="${esc(v.youtube_url)}" target="_blank" class="btn-primary btn-sm">View ↗</a>
+              <button class="btn-primary btn-sm btn-danger" onclick="deleteVideo(${v.id}, this)">Delete</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch {
+      wrap.innerHTML = '<div style="color:#dc2626;font-size:13px">Failed to load videos.</div>';
+    }
+  }
+
+  async function addVideo() {
+    const title = document.getElementById('v-title').value.trim();
+    const url   = document.getElementById('v-url').value.trim();
+    const cat   = document.getElementById('v-cat').value;
+    const desc  = document.getElementById('v-desc').value.trim();
+    const alert = document.getElementById('video-alert');
+    const btn   = document.getElementById('add-video-btn');
+
+    alert.className = 'alert'; alert.style.display = 'none';
+    if (!title || !url) { showAlert(alert, 'Title and YouTube URL are required.', 'err'); return; }
+    if (!ytId(url)) { showAlert(alert, 'Please enter a valid YouTube URL.', 'err'); return; }
+
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+      const r = await fetch(`${API}/admin/videos`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': getKey(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, youtube_url: url, category: cat, description: desc || null })
+      });
+      if (!r.ok) throw new Error();
+      showAlert(alert, 'Video added successfully!', 'ok');
+      document.getElementById('v-title').value = '';
+      document.getElementById('v-url').value = '';
+      document.getElementById('v-desc').value = '';
+      await loadVideos();
+    } catch {
+      showAlert(alert, 'Failed to add video. Try again.', 'err');
+    } finally {
+      btn.disabled = false; btn.innerHTML = 'Add Video';
+    }
+  }
+
+  async function deleteVideo(id, btn) {
+    if (!confirm('Delete this video?')) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await fetch(`${API}/admin/videos/${id}`, { method: 'DELETE', headers: { 'X-Admin-Key': getKey() } });
+      await loadVideos();
+    } catch {
+      btn.disabled = false; btn.textContent = 'Delete';
+    }
+  }
+
+  // ── CSV Upload ────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+  const csvInput = document.getElementById('csv-input');
+  const fileQueue = document.getElementById('file-queue');
+  const uploadBtn = document.getElementById('upload-btn');
+  const files = [];
+
+  dropZone.addEventListener('click', () => csvInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  csvInput.addEventListener('change', () => addFiles(csvInput.files));
+
+  function addFiles(list) {
+    const csvs = Array.from(list).filter(f => f.name.endsWith('.csv'));
+    if (!csvs.length) {
+      const dz = document.getElementById('drop-zone');
+      dz.style.borderColor = '#dc2626';
+      const msg = dz.querySelector('.dz-err') || document.createElement('small');
+      msg.className = 'dz-err';
+      msg.style.cssText = 'display:block;color:#dc2626;margin-top:6px;font-weight:600';
+      msg.textContent = 'CSV files only. Use the "Upload Chargemaster File" section below for PDF, Excel, or Word files.';
+      if (!dz.querySelector('.dz-err')) dz.appendChild(msg);
+      setTimeout(() => { dz.style.borderColor = ''; msg.remove(); }, 4000);
+      return;
+    }
+    const existing = new Set(files.map(f => f.name));
+    csvs.forEach(f => { if (!existing.has(f.name)) files.push(f); });
+    renderQueue();
+  }
+
+  function renderQueue() {
+    if (!files.length) { fileQueue.style.display = 'none'; uploadBtn.style.display = 'none'; return; }
+    fileQueue.style.display = 'block'; uploadBtn.style.display = 'flex';
+    fileQueue.innerHTML = files.map((f, i) => `
+      <li class="file-item">
+        <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>${esc(f.name)}</span>
+        <span class="file-size">${(f.size/1024/1024).toFixed(1)} MB</span>
+        <button class="file-remove" onclick="removeFile(${i})">✕</button>
+      </li>`).join('');
+  }
+
+  function removeFile(i) { files.splice(i, 1); renderQueue(); }
+
+  async function uploadPdf(btn) {
+    const hospitalName = (document.getElementById('pdf-hospital-name').value || '').trim();
+    const fileInput = document.getElementById('pdf-input');
+    const resultDiv = document.getElementById('pdf-result');
+    if (!hospitalName) { resultDiv.innerHTML = '<span style="color:#dc2626">Please enter the hospital name.</span>'; return; }
+    if (!fileInput.files.length) { resultDiv.innerHTML = '<span style="color:#dc2626">Please select a PDF file.</span>'; return; }
+    btn.disabled = true; btn.textContent = '…Uploading';
+    resultDiv.innerHTML = '<span style="color:#6b7280">Uploading and queuing for processing…</span>';
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    fd.append('hospital_name_override', hospitalName);
+    try {
+      const r = await fetch(`${API}/admin/upload-file`, { method: 'POST', headers: { 'X-Admin-Key': getKey() }, body: fd });
+      const d = await r.json();
+      if (r.ok) {
+        resultDiv.innerHTML = `<span style="color:#16a34a">✓ Queued — ${esc(d.hospital_name)} (upload #${d.upload_id}). Check CSV Repository for status.</span>`;
+        fileInput.value = ''; document.getElementById('pdf-hospital-name').value = '';
+      } else {
+        resultDiv.innerHTML = `<span style="color:#dc2626">✗ ${esc(d.detail || 'Upload failed')}</span>`;
+      }
+    } catch (e) {
+      resultDiv.innerHTML = `<span style="color:#dc2626">✗ ${esc(e.message)}</span>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Upload PDF';
+    }
+  }
+
+  async function uploadAll() {
+    if (!files.length) return;
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading…';
+    const resultsDiv = document.getElementById('upload-results');
+    const resultsList = document.getElementById('results-list');
+    resultsDiv.style.display = 'block'; resultsList.innerHTML = '';
+
+    const uploadIds = [];
+    for (const file of [...files]) {
+      const fd = new FormData(); fd.append('file', file);
+      let html;
+      try {
+        const r = await fetch(`${API}/admin/upload-csv`, { method: 'POST', headers: { 'X-Admin-Key': getKey() }, body: fd });
+        const d = await r.json();
+        if (r.ok) {
+          uploadIds.push({ id: d.upload_id, name: file.name, hospital: d.hospital_name });
+          html = `<div id="upload-row-${d.upload_id}" style="display:flex;align-items:start;gap:10px;padding:10px;background:#fffbeb;border-radius:8px;margin-bottom:8px">
+            <span class="spinner spinner-dark" style="margin-top:2px;flex-shrink:0"></span>
+            <div><div style="font-size:13px;font-weight:600">${esc(file.name)}</div>
+            <div style="font-size:12px;color:#92400e;margin-top:2px">Processing in background for <strong>${esc(d.hospital_name)}</strong> — check CSV Repository for results</div></div></div>`;
+        } else {
+          html = `<div style="display:flex;align-items:start;gap:10px;padding:10px;background:#fef2f2;border-radius:8px;margin-bottom:8px">
+            <svg width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <div><div style="font-size:13px;font-weight:600">${esc(file.name)}</div>
+            <div style="font-size:12px;color:#dc2626;margin-top:2px">${esc(d.detail || 'Upload failed')}</div></div></div>`;
+        }
+      } catch(e) {
+        html = `<div style="padding:10px;background:#fef2f2;border-radius:8px;margin-bottom:8px;font-size:13px;color:#dc2626">Network error uploading ${esc(file.name)}: ${esc(String(e))}</div>`;
+      }
+      resultsList.innerHTML += html;
+    }
+
+    files.length = 0; renderQueue();
+    btn.disabled = false; btn.innerHTML = 'Upload All';
+    await loadCsvFiles();
+
+    // Poll for completion of background uploads
+    if (uploadIds.length) pollUploads(uploadIds);
+  }
+
+  async function pollUploads(uploadIds) {
+    const pending = new Set(uploadIds.map(u => u.id));
+    let attempts = 0;
+    while (pending.size > 0 && attempts < 60) {
+      await new Promise(r => setTimeout(r, 5000));
+      attempts++;
+      try {
+        const r = await fetch(`${API}/admin/csv-files?limit=100`, { headers: { 'X-Admin-Key': getKey() } });
+        const d = await r.json();
+        for (const item of d.items) {
+          if (!pending.has(item.id)) continue;
+          if (item.status === 'done' || item.status === 'error') {
+            pending.delete(item.id);
+            const row = document.getElementById(`upload-row-${item.id}`);
+            if (row) {
+              if (item.status === 'done') {
+                row.style.background = '#f0fdf4';
+                row.innerHTML = `<svg width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg>
+                  <div><div style="font-size:13px;font-weight:600">${esc(item.filename)}</div>
+                  <div style="font-size:12px;color:#166534;margin-top:2px">✓ ${(item.row_count||0).toLocaleString()} CPT rows loaded for <strong>${esc(item.hospital_name)}</strong></div></div>`;
+              } else {
+                row.style.background = '#fef2f2';
+                row.innerHTML = `<svg width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  <div><div style="font-size:13px;font-weight:600">${esc(item.filename)}</div>
+                  <div style="font-size:12px;color:#dc2626;margin-top:2px">${esc(item.error_message || 'Processing failed')}</div></div>`;
+              }
+            }
+          }
+        }
+        await loadCsvFiles();
+      } catch { break; }
+    }
+  }
+
+  // ── CSV Repository ────────────────────────────────────────
+  async function loadCsvFiles() {
+    const tbody = document.getElementById('csv-table-body');
+    const sub = document.getElementById('csv-sub');
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="spinner spinner-dark" style="margin:0 auto"></div></td></tr>';
+    try {
+      const r = await fetch(`${API}/admin/csv-files?limit=50`, { headers: { 'X-Admin-Key': getKey() } });
+      const d = await r.json();
+      sub.textContent = `${d.total} file${d.total !== 1 ? 's' : ''} in database — click a row to view prices`;
+      if (!d.items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">No CSV files uploaded yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(f => {
+        const badge = f.status === 'done' ? 'badge-ok' : f.status === 'error' ? 'badge-err' : 'badge-proc';
+        const date = new Date(f.uploaded_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+        const canView = f.status === 'done' && f.row_count > 0;
+        return `<tr style="cursor:${canView ? 'pointer' : 'default'}" onclick="${canView ? `openModal(${f.id},'${esc(f.hospital_name || '')}',${f.row_count})` : ''}">
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.filename)}">${esc(f.filename)}</td>
+          <td style="font-weight:500">${esc(f.hospital_name || '—')}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${f.row_count > 0 ? f.row_count.toLocaleString() : '—'}</td>
+          <td style="white-space:nowrap">${date}</td>
+          <td><span class="badge ${badge}">${f.status}</span>${f.status === 'error' && f.error_message ? `<div style="font-size:11px;color:#dc2626;margin-top:2px">${esc(f.error_message)}</div>` : ''}</td>
+          <td onclick="event.stopPropagation()">
+            <div style="display:flex;gap:4px">
+              ${canView ? `<button class="btn-primary btn-sm" onclick="exportCsvById(${f.id},'${esc(f.hospital_name || 'hospital')}')">⬇ Export</button>` : ''}
+              <button class="btn-primary btn-sm btn-danger" onclick="deleteCsv(${f.id},'${esc(f.filename)}',this)">Delete</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#dc2626;padding:20px">Failed to load files.</td></tr>';
+    }
+  }
+
+  async function cptSearch() {
+    const code = (document.getElementById('cpt-search-input').value || '').trim();
+    if (!code) return;
+    const btn = document.getElementById('cpt-search-btn');
+    const results = document.getElementById('cpt-search-results');
+    const summary = document.getElementById('cpt-search-summary');
+    const tbody = document.getElementById('cpt-search-tbody');
+    btn.disabled = true; btn.textContent = '…';
+    results.style.display = 'none';
+    try {
+      const r = await fetch(`${API}/admin/cpt-search?code=${encodeURIComponent(code)}&limit=100`, { headers: { 'X-Admin-Key': getKey() } });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Search failed'); }
+      const d = await r.json();
+      summary.textContent = d.total === 0
+        ? `No hospitals in the uploaded repository have pricing data for CPT ${code}.`
+        : `${d.total} hospital${d.total !== 1 ? 's' : ''} have pricing for CPT ${code}${d.total > d.items.length ? ` (showing first ${d.items.length})` : ''}.`;
+      const fmt = v => v != null ? '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+      tbody.innerHTML = d.items.length === 0 ? '' : d.items.map(row => `
+        <tr>
+          <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(row.hospital_name)}">${esc(row.hospital_name)}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280" title="${esc(row.service_description||'')}">${esc(row.service_description || '—')}</td>
+          <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#6b7280" title="${esc((row.payer_name||'')+(row.plan_name?' / '+row.plan_name:''))}">${row.payer_name ? esc(row.payer_name) + (row.plan_name ? `<br><span style="color:#9ca3af">${esc(row.plan_name)}</span>` : '') : '—'}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:${row.cash_price!=null?'600':'400'};color:${row.cash_price!=null?'#15803d':'#374151'}">${fmt(row.cash_price)}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${fmt(row.gross_price)}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${fmt(row.negotiated_price ?? row.estimated_amount)}</td>
+        </tr>`).join('');
+      results.style.display = 'block';
+    } catch (e) {
+      summary.textContent = '⚠ ' + e.message;
+      tbody.innerHTML = '';
+      results.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Search';
+    }
+  }
+
+  async function deleteCsv(id, name, btn) {
+    if (!confirm(`Delete "${name}" and all its CPT rows?`)) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await fetch(`${API}/admin/csv-files/${id}`, { method: 'DELETE', headers: { 'X-Admin-Key': getKey() } });
+      await loadCsvFiles();
+    } catch {
+      btn.disabled = false; btn.textContent = 'Delete';
+    }
+  }
+
+  // ── Price Viewer Modal ────────────────────────────────────
+  let _modalId = null, _modalPage = 1, _modalSearch = '';
+
+  function openModal(id, hospitalName, rowCount) {
+    _modalId = id; _modalPage = 1; _modalSearch = '';
+    document.getElementById('modal-hospital-name').textContent = hospitalName;
+    document.getElementById('modal-row-count').textContent = `${rowCount.toLocaleString()} price rows`;
+    document.getElementById('modal-search').value = '';
+    document.getElementById('modal-export-btn').onclick = () => exportCsvById(id, hospitalName);
+    document.getElementById('csv-modal').style.display = 'flex';
+    loadModalRows();
+  }
+
+  function closeModal() {
+    document.getElementById('csv-modal').style.display = 'none';
+    _modalId = null;
+  }
+
+  document.getElementById('csv-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('csv-modal')) closeModal();
+  });
+
+  let _searchTimer;
+  function modalSearch() {
+    _modalSearch = document.getElementById('modal-search').value;
+    _modalPage = 1;
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(loadModalRows, 300);
+  }
+
+  async function loadModalRows() {
+    if (!_modalId) return;
+    const tbody = document.getElementById('modal-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px"><div class="spinner spinner-dark" style="margin:0 auto"></div></td></tr>';
+    const params = new URLSearchParams({ page: _modalPage, limit: 50, search: _modalSearch });
+    try {
+      const r = await fetch(`${API}/admin/csv-files/${_modalId}/rows?${params}`, { headers: { 'X-Admin-Key': getKey() } });
+      const d = await r.json();
+      if (!d.rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#9ca3af">No rows found.</td></tr>';
+        document.getElementById('modal-pagination').innerHTML = '';
+        return;
+      }
+      tbody.innerHTML = d.rows.map(row => {
+        const fmt = v => v != null ? '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '<span style="color:#ccc">—</span>';
+        return `<tr>
+          <td style="font-family:monospace;font-size:13px;white-space:nowrap">${esc(row.code)}</td>
+          <td style="font-size:12px;color:#6b7280">${esc(row.code_type||'')}</td>
+          <td style="max-width:280px;font-size:13px">${esc(row.service_description||'')}</td>
+          <td style="text-align:right;font-size:13px;white-space:nowrap">${fmt(row.standard_charge_discounted_cash)}</td>
+          <td style="text-align:right;font-size:13px;white-space:nowrap">${fmt(row.standard_charge_gross)}</td>
+          <td style="text-align:right;font-size:13px;white-space:nowrap">${fmt(row.standard_charge_negotiated_dollar)}</td>
+          <td style="font-size:12px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(row.payer_name||'')}</td>
+        </tr>`;
+      }).join('');
+      const total = d.total, pages = Math.ceil(total / 50);
+      document.getElementById('modal-pagination').innerHTML = `
+        <span>${total.toLocaleString()} rows${_modalSearch ? ' (filtered)' : ''}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="modalGoto(${_modalPage-1})" ${_modalPage<=1?'disabled':''} class="btn-primary btn-sm">‹ Prev</button>
+          <span>Page ${_modalPage} of ${pages}</span>
+          <button onclick="modalGoto(${_modalPage+1})" ${_modalPage>=pages?'disabled':''} class="btn-primary btn-sm">Next ›</button>
+        </div>`;
+    } catch {
+      tbody.innerHTML = '<tr><td colspan="7" style="color:#dc2626;padding:16px">Failed to load rows.</td></tr>';
+    }
+  }
+
+  function modalGoto(page) { _modalPage = page; loadModalRows(); }
+
+  function exportCsvById(id, hospitalName) {
+    const a = document.createElement('a');
+    a.href = `${API}/admin/csv-files/${id}/export`;
+    a.setAttribute('download', '');
+    // Pass key via URL isn't ideal but the endpoint checks X-Admin-Key header
+    // Use a form POST trick to send the header — simplest: open via fetch + blob
+    fetch(`${API}/admin/csv-files/${id}/export`, { headers: { 'X-Admin-Key': getKey() } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(hospitalName||'hospital').toLowerCase().replace(/\s+/g,'_')}_prices.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+  }
+  function exportCsv() { if (_modalId) exportCsvById(_modalId, document.getElementById('modal-hospital-name').textContent); }
+
+  // ── Backfill ──────────────────────────────────────────────
+  async function backfillRegistry(btn) {
+    if (!confirm('Import all hospitals already in the database into the CSV registry?')) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await fetch(`${API}/admin/backfill-csv-registry`, {
+        method: 'POST', headers: { 'X-Admin-Key': getKey() }
+      });
+      const d = await r.json();
+      if (r.ok) {
+        alert(`✓ Imported ${d.backfilled} hospital${d.backfilled !== 1 ? 's' : ''} into the registry.`);
+        await loadCsvFiles();
+      } else {
+        alert('Backfill failed: ' + (d.detail || 'Unknown error'));
+      }
+    } catch { alert('Network error during backfill.'); }
+    finally { btn.disabled = false; btn.textContent = '⬇ Import Existing Data'; }
+  }
+
+  // ── Utils ─────────────────────────────────────────────────
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function showAlert(el, msg, type) { el.textContent = msg; el.className = `alert alert-${type} active`; }
+
+  // ── Init ──────────────────────────────────────────────────
+  const savedKey = getKey();
+  if (savedKey) {
+    adminKey = savedKey;
+    showApp();
+  }
+</script>
+</body>
+</html>
